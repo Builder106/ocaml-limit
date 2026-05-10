@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Terminal-obsidian background — matches the dashboard's #0a0a0a base. -->
+  <rect width="32" height="32" fill="#0a0a0a"/>
+
+  <!-- Asks (top, descending depth toward the spread). Bloomberg red. -->
+  <rect x="0" y="3"  width="32" height="3" fill="#ff0000"/>
+  <rect x="0" y="8"  width="26" height="3" fill="#ff0000"/>
+  <rect x="0" y="13" width="18" height="3" fill="#ff0000"/>
+
+  <!-- Spread gap at y=16-18 reads as the BBO. -->
+
+  <!-- Bids (bottom, descending depth away from the spread). Bloomberg green. -->
+  <rect x="0" y="18" width="22" height="3" fill="#00ff00"/>
+  <rect x="0" y="23" width="28" height="3" fill="#00ff00"/>
+  <rect x="0" y="28" width="14" height="3" fill="#00ff00"/>
+</svg>
