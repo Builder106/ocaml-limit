@@ -1,0 +1,22 @@
+.git/
+.gitignore
+_build/
+*.swp
+.DS_Store
+.ocamlformat
+DEPLOY.md
+README.md
+
+# Editor / OS clutter
+.vscode/
+.idea/
+
+# Test artifacts
+test-results/
+playwright-report/
+*.log
+
+# Note: bin/diag.ml is left in the build context — bin/dune references
+# it, so excluding it would break dune's build planning. We only build
+# `bin/server.exe` explicitly, so diag.exe isn't compiled and doesn't
+# end up in the runtime image.

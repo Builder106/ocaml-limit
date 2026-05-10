@@ -1,0 +1,139 @@
+# Auto-deploy to Oracle Cloud E1 Micro on push to main.
+#
+# Flow:
+#   1. Build linux/amd64 Docker image (with GHA layer cache)
+#   2. Push to GitHub Container Registry as :latest and :sha-<short>
+#   3. SSH into the Oracle VM, pull the new image, restart the container
+#   4. Smoke-test the local endpoint inside the VM
+#
+# Caddy in front handles WSS termination, so the brief restart shows
+# up to a recruiter as a sub-second 502 — acceptable for a demo.
+# For zero-downtime, see the comments at the bottom.
+#
+# Required secrets (Settings → Secrets and variables → Actions):
+#   SSH_HOST          public IP or hostname of the VM
+#   SSH_USER          usually "ubuntu" on Oracle's Ubuntu image
+#   SSH_PRIVATE_KEY   the matching private key for the public key in ~ubuntu/.ssh/authorized_keys
+#
+# One-time setup after the first successful push:
+#   GitHub → your repo → Packages → ocaml_lob → Package settings → Change visibility → Public.
+#   This lets the VM `docker pull` without authenticating to GHCR.
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # manual trigger from the Actions UI
+
+# Don't run two deploys at the same time — they'd race on the VM.
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix=sha-,format=short
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Pull and restart on the VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          # Inline script — keep it short. Anything more involved
+          # belongs in a script file checked into the repo.
+          script: |
+            set -euo pipefail
+            IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+
+            echo "→ pulling $IMAGE"
+            docker pull "$IMAGE"
+
+            echo "→ replacing container"
+            docker stop ocaml_lob 2>/dev/null || true
+            docker rm   ocaml_lob 2>/dev/null || true
+            docker run -d \
+              --name ocaml_lob \
+              --restart unless-stopped \
+              -p 127.0.0.1:8080:8080 \
+              "$IMAGE"
+
+            echo "→ smoke test"
+            for i in 1 2 3 4 5; do
+              if curl -fsS -m 2 http://127.0.0.1:8080/ > /dev/null; then
+                echo "✓ deploy healthy (attempt $i)"
+                break
+              fi
+              sleep 1
+              if [ "$i" = "5" ]; then
+                echo "✗ deploy unhealthy after 5 attempts"
+                docker logs --tail 50 ocaml_lob
+                exit 1
+              fi
+            done
+
+            echo "→ pruning old images"
+            docker image prune -af --filter "until=168h" >/dev/null
+
+# Notes for evolving this:
+#
+# - For zero-downtime: run two containers behind Caddy with separate
+#   names (ocaml_lob_blue / ocaml_lob_green), update Caddy to point
+#   at whichever is healthy, then stop the old one. Caddy's load
+#   balancer can do this with `lb_policy first` and active health
+#   checks. Overkill for a demo but the path is clear.
+#
+# - To gate on tests passing first: add a `test` job that runs
+#   `dune runtest` and make `build-and-push` depend on it. Skipped
+#   here because perf_test allocates ~120MB per run and GitHub
+#   runners are tight on RAM.

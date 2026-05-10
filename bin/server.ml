@@ -10,38 +10,162 @@ module Stats = Stats
 
 (** {2 Snapshot Utilities} *)
 
+(* Walk the side's price-level DLL from best to worst. The list is
+   already sorted by aggressiveness (best at head), which matches how
+   the dashboard wants to render — asks ascending, bids descending —
+   so no client-side sort is needed. Skips empty levels left behind by
+   the engine's lazy-keep policy on level exhaustion. *)
 let snapshot_to_json (engine : Engine.t) =
-    let levels_to_json levels side_sort =
-        PriceMap.bindings levels
-        |> List.sort (fun (p1, _) (p2, _) -> side_sort p2 p1) (* descending for bids, ascending for asks *)
-        |> List.map (fun (price, level) ->
-            `Assoc [
-                ("price", `Float (price_to_float price));
-                ("size", `Int level.pl_total_qty);
-                ("totalSize", `Int level.pl_total_qty); (* Should be cumulative for depth *)
-                ("depth", `Int (min 100 (level.pl_total_qty / 10)))
-            ])
-        |> (fun l -> `List l)
+    let level_to_json level =
+        `Assoc [
+            ("price", `Float (price_to_float level.pl_price));
+            ("size", `Int level.pl_total_qty);
+            ("totalSize", `Int level.pl_total_qty);
+            ("depth", `Int (min 100 (level.pl_total_qty / 10)))
+        ]
+    in
+    let side_to_json (side : book_side) =
+        let rec walk lvl acc =
+            if lvl == sentinel_level then List.rev acc
+            else if lvl.pl_order_count = 0 then walk lvl.pl_next_level acc
+            else walk lvl.pl_next_level (level_to_json lvl :: acc)
+        in
+        `List (walk side.best_level [])
     in
     `Assoc [
         ("type", `String "SNAPSHOT");
-        ("asks", levels_to_json engine.book.asks.levels compare);
-        ("bids", levels_to_json engine.book.bids.levels (fun a b -> compare b a));
+        ("asks", side_to_json engine.book.asks);
+        ("bids", side_to_json engine.book.bids);
     ]
+
+(** {2 Broadcast State}
+
+    Every connected dashboard receives bot-generated trades and risk
+    alerts. The list is mutated only on connect/disconnect; iteration
+    is safe because Dream's default Lwt scheduler is single-threaded. *)
+
+let connected_clients : Dream.websocket list ref = ref []
+
+let broadcast (msg : string) =
+    List.iter (fun ws ->
+        Lwt.async (fun () ->
+            try%lwt Dream.send ws msg with _ -> Lwt.return_unit))
+    !connected_clients
+
+(** {2 Demo Bot}
+
+    A synthetic market-making + aggressor that keeps the book lively
+    so visitors land on a moving market rather than a static snapshot.
+    Pure demo affordance — none of this runs on the benchmarked hot path. *)
+
+let bot_next_id = ref 1_000_000_000  (* above the manual-order id space *)
+let mid_price = ref 1_502_500         (* $150.25 in fixed-point ticks *)
+
+let next_bot_id () =
+    incr bot_next_id; !bot_next_id
+
+let make_bot_on_fill ~aggressive_side =
+    fun passive_id active_id price qty _ts ->
+        let msg = `Assoc [
+            ("type", `String "TRADE");
+            ("trade", `Assoc [
+                ("side",       `String (side_to_string aggressive_side));
+                ("price",      `Float (price_to_float price));
+                ("size",       `Int qty);
+                ("passive_id", `Int passive_id);
+                ("active_id", `Int active_id);
+            ]);
+        ] |> Yojson.Safe.to_string in
+        broadcast msg
+
+let submit_bot_order engine ~side ~price ~qty =
+    let order = make_order ~id:(next_bot_id ()) ~side ~price ~qty
+        ~order_type:Limit ~timestamp:0 in
+    ignore (Engine.submit engine order (make_bot_on_fill ~aggressive_side:side))
+
+let alert_messages = [|
+    "Heartbeat received from gateway 1";
+    "Network jitter within bounds";
+    "Risk limits verified";
+    "Position check symbol: SPY";
+    "Spread widened above 5bp";
+    "Volatility spike detected";
+    "Pre-trade gate latency 0.4μs";
+    "Iceberg reload triggered on bid stack";
+|]
+
+let broadcast_random_alert () =
+    let msg = alert_messages.(Random.int (Array.length alert_messages)) in
+    let json = `Assoc [
+        ("type",    `String "RISK_ALERT");
+        ("message", `String msg);
+    ] |> Yojson.Safe.to_string in
+    broadcast json
+
+(* Single iteration of bot behavior. Action distribution:
+   55% aggressive cross  -> generates a fill, lights up the tape
+   35% resting quote     -> deepens the book, lights up the depth chart
+    7% mid drift         -> shifts BBO over time
+    3% risk alert        -> populates the risk log *)
+let bot_step engine =
+    let action = Random.float 1.0 in
+    if action < 0.55 then begin
+        let side  = if Random.bool () then Buy else Ask in
+        let cross = 50 + Random.int 200 in   (* 0.5–2.5¢ across the spread *)
+        let price = match side with
+            | Buy -> !mid_price + cross
+            | Ask -> !mid_price - cross
+        in
+        submit_bot_order engine ~side ~price ~qty:(5 + Random.int 45)
+    end else if action < 0.90 then begin
+        let side   = if Random.bool () then Buy else Ask in
+        let offset = 50 + Random.int 500 in  (* 0.5–5.5¢ resting from mid *)
+        let price  = match side with
+            | Buy -> !mid_price - offset
+            | Ask -> !mid_price + offset
+        in
+        submit_bot_order engine ~side ~price ~qty:(100 + Random.int 900)
+    end else if action < 0.97 then
+        mid_price := !mid_price + (Random.int 101 - 50)  (* ±$0.005 drift *)
+    else
+        broadcast_random_alert ()
+
+let rec run_demo_bot engine =
+    let%lwt () = Lwt_unix.sleep (0.15 +. Random.float 0.25) in  (* 150–400ms *)
+    bot_step engine;
+    run_demo_bot engine
 
 (** {2 Server Logic} *)
 
 let () =
+    Random.self_init ();
     let config = default_config in
     let engine = Engine.create config in
     let stats = Stats.create 100_000 in
-    
-    (* Pre-fill with some liquidity for the demo *)
-    let dummy_on_fill _ _ _ _ _ = () in
-    let _ = Engine.submit engine (make_order ~id:1 ~side:Buy ~price:1502000 ~qty:500 ~order_type:Limit ~timestamp:0) dummy_on_fill in
-    let _ = Engine.submit engine (make_order ~id:2 ~side:Ask ~price:1503000 ~qty:450 ~order_type:Limit ~timestamp:0) dummy_on_fill in
 
-    Dream.run ~port:8080
+    (* Seed ~15 levels of depth on each side so the book reads as
+       a real market the moment the page loads. *)
+    let dummy_on_fill _ _ _ _ _ = () in
+    for i = 1 to 15 do
+        let bid = make_order ~id:(next_bot_id ())
+            ~side:Buy ~price:(!mid_price - (i * 50))
+            ~qty:(200 + Random.int 800) ~order_type:Limit ~timestamp:0 in
+        let ask = make_order ~id:(next_bot_id ())
+            ~side:Ask ~price:(!mid_price + (i * 50))
+            ~qty:(200 + Random.int 800) ~order_type:Limit ~timestamp:0 in
+        ignore (Engine.submit engine bid dummy_on_fill);
+        ignore (Engine.submit engine ask dummy_on_fill)
+    done;
+    prerr_endline "[demo bot] seeded 15 levels per side; starting loop";
+    Lwt.async (fun () -> run_demo_bot engine);
+
+    (* Bind via env vars so the same binary works for local dev
+       (defaults to localhost:8080) and behind a reverse proxy in
+       Docker (set INTERFACE=0.0.0.0). *)
+    let interface = try Sys.getenv "INTERFACE" with Not_found -> "localhost" in
+    let port = try int_of_string (Sys.getenv "PORT") with _ -> 8080 in
+
+    Dream.run ~interface ~port
     @@ Dream.logger
     @@ Dream.router [
         (* Static Files *)
@@ -51,6 +175,7 @@ let () =
         (* WebSocket Endpoint *)
         Dream.get "/ws" (fun _ ->
             Dream.websocket (fun websocket ->
+                connected_clients := websocket :: !connected_clients;
                 let rec loop () =
                     let%lwt () = Lwt_unix.sleep 0.5 in (* Update UI every 500ms *)
                     
@@ -104,5 +229,10 @@ let () =
                     | None -> Lwt.return_unit
                 in
 
-                Lwt.choose [loop (); receiver ()]));
+                Lwt.finalize
+                    (fun () -> Lwt.choose [loop (); receiver ()])
+                    (fun () ->
+                        connected_clients :=
+                            List.filter (fun w -> w != websocket) !connected_clients;
+                        Lwt.return_unit)));
     ]
