@@ -59,7 +59,16 @@ let broadcast (msg : string) =
     Pure demo affordance — none of this runs on the benchmarked hot path. *)
 
 let bot_next_id = ref 1_000_000_000  (* above the manual-order id space *)
-let mid_price = ref 1_502_500         (* $150.25 in fixed-point ticks *)
+let mid_price_initial = 1_502_500     (* $150.25 in fixed-point ticks *)
+let mid_price = ref mid_price_initial
+
+(* Mid is clamped to [initial ± mid_drift_bound] so the bot can't
+   accumulate unbounded unique price levels over a long-running deploy.
+   The previous unbounded random walk hung the live demo after the
+   per-side Price_index filled — see memory/engine_allocation_profile.md.
+   Total bot-touched price range ≈ ±(mid_drift_bound + max_offset) =
+   ±(300 + 550) = ±850 ticks ≈ 1700 unique prices. *)
+let mid_drift_bound = 300
 
 let next_bot_id () =
     incr bot_next_id; !bot_next_id
@@ -125,13 +134,21 @@ let bot_step engine =
             | Ask -> !mid_price + offset
         in
         submit_bot_order engine ~side ~price ~qty:(100 + Random.int 900)
-    end else if action < 0.97 then
-        mid_price := !mid_price + (Random.int 101 - 50)  (* ±$0.005 drift *)
+    end else if action < 0.97 then begin
+        let new_mid = !mid_price + (Random.int 101 - 50) in   (* ±$0.005 step *)
+        let low = mid_price_initial - mid_drift_bound in
+        let high = mid_price_initial + mid_drift_bound in
+        mid_price := max low (min high new_mid)
+    end
     else
         broadcast_random_alert ()
 
+(* Loop interval doubled from the original 150-400ms to 400-1000ms.
+   The earlier rate (~3 orders/sec) saturated the 1/8 OCPU when
+   combined with snapshot serialization for a live WS client and led
+   to scheduler back-pressure on the live VM. Slower = stabler. *)
 let rec run_demo_bot engine =
-    let%lwt () = Lwt_unix.sleep (0.15 +. Random.float 0.25) in  (* 150–400ms *)
+    let%lwt () = Lwt_unix.sleep (0.4 +. Random.float 0.6) in
     bot_step engine;
     run_demo_bot engine
 
