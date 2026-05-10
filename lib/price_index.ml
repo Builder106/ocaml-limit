@@ -18,9 +18,16 @@
 
     {b Sizing}: capacity is fixed at create time and rounded up to a
     power of two (so [hash mod capacity] becomes a single [land mask]).
-    There is no resize path — overflow into a full table loops
-    indefinitely. Choose [capacity ≥ 4 × expected_distinct_prices] for
-    a ≤25% load factor and minimal probing.
+    There is no resize path — once the table is full, [add] raises
+    [Failure]. Choose [capacity ≥ 4 × expected_distinct_prices] for a
+    ≤25% load factor and minimal probing.
+
+    Pitfall ([2026-05-10]): a prior version omitted the bounds check
+    and looped forever on a full table, pegging CPU at 100% and
+    freezing the Lwt scheduler. The demo bot's drifting mid_price
+    slowly produces unique prices over hours; on the deployed VM the
+    server hung after ~3h once accumulated levels approached the
+    8192-slot cap.
 
     {b Not supported}: removal — the engine's lazy-keep policy never
     removes levels from the index; exhausted levels stay resident for
@@ -54,25 +61,35 @@ let create min_capacity ~empty_value =
    like ours (prices clustered in a small range). *)
 let[@inline] hash key mask = (key * 2654435769) land mask
 
-let rec find_aux t key idx =
-  let k = t.keys.(idx) in
-  if k = key then t.values.(idx)
-  else if k = empty_key then raise Not_found
-  else find_aux t key ((idx + 1) land t.mask)
+(* [probes] is bounded by [capacity] to prevent an infinite loop on a
+   full or wholly-collided table — see the pitfall note in the module
+   docstring. Bounded recursion costs nothing on the hot (≤1-probe)
+   path. *)
+let rec find_aux t key idx probes =
+  if probes > t.mask then raise Not_found
+  else
+    let k = t.keys.(idx) in
+    if k = key then t.values.(idx)
+    else if k = empty_key then raise Not_found
+    else find_aux t key ((idx + 1) land t.mask) (probes + 1)
 
 (** Raises [Not_found] if [key] is not present. *)
-let find t key = find_aux t key (hash key t.mask)
+let find t key = find_aux t key (hash key t.mask) 0
 
-let rec add_aux t key value idx =
-  let k = t.keys.(idx) in
-  if k = empty_key then begin
-    t.keys.(idx) <- key;
-    t.values.(idx) <- value
-  end
-  else if k = key then
-    t.values.(idx) <- value
+let rec add_aux t key value idx probes =
+  if probes > t.mask then
+    failwith "Price_index: capacity exceeded — increase price_index_capacity"
   else
-    add_aux t key value ((idx + 1) land t.mask)
+    let k = t.keys.(idx) in
+    if k = empty_key then begin
+      t.keys.(idx) <- key;
+      t.values.(idx) <- value
+    end
+    else if k = key then
+      t.values.(idx) <- value
+    else
+      add_aux t key value ((idx + 1) land t.mask) (probes + 1)
 
-(** Inserts or overwrites. No allocation. *)
-let add t key value = add_aux t key value (hash key t.mask)
+(** Inserts or overwrites. No allocation. Raises [Failure] if the
+    table is full (every slot probed without finding empty/match). *)
+let add t key value = add_aux t key value (hash key t.mask) 0

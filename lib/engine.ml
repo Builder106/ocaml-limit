@@ -37,12 +37,17 @@ type t = {
     mutable last_match_price : price;
 }
 
-(** Capacity of the per-side [Price_index] hashtable. Sized for
-    typical books — bench uses 100 distinct prices; this allows
-    up to ~2k at a 25% load factor without resize (which the table
-    doesn't implement). Override by editing here if your workload
-    has more distinct price levels. *)
-let price_index_capacity = 8192
+(** Capacity of the per-side [Price_index] hashtable. Bench uses 100
+    distinct prices; this allows up to ~16k at a 25% load factor
+    without resize (which the table doesn't implement — instead it
+    raises [Failure] on overflow per the bounds check in [Price_index]).
+
+    Sized generously because the demo bot ([bin/server.ml]) does a
+    random-walk on its mid_price and can accumulate thousands of
+    unique price levels over many hours. An earlier 8192 cap brought
+    down the live VM after ~3h. 65536 buys orders-of-magnitude more
+    runway at ~512 KB per side memory cost. *)
+let price_index_capacity = 65536
 
 (** [create config] initializes a fresh matching engine with pre-allocated pools. *)
 let create config =
