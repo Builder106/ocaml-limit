@@ -11,7 +11,10 @@ open Types
 module Engine = Engine
 module Risk = Risk
 
-let reject_result_test = Alcotest.testable Risk.risk_result_to_string ( = )
+let reject_result_test =
+    Alcotest.testable
+        (fun ppf r -> Format.pp_print_string ppf (Risk.risk_result_to_string r))
+        ( = )
 
 let test_basic_matching () =
     let engine = Engine.create default_config in

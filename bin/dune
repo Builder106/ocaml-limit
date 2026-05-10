@@ -12,3 +12,12 @@
  (preprocess (pps lwt_ppx))
  (ocamlopt_flags
   (:standard -O3 -unbox-closures)))
+
+; Allocation diagnostic: measures bytes-per-order via Gc.minor_words.
+; Run with `dune exec bin/diag.exe` to measure cold-path warmup vs.
+; per-submit allocation across different order counts.
+(executable
+ (name diag)
+ (libraries ocaml_lob unix)
+ (ocamlopt_flags
+  (:standard -O3 -unbox-closures)))

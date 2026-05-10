@@ -102,14 +102,44 @@ type queue_node = {
   mutable qn_prev : int;  (** Index of prev node, or -1 for head *)
 }
 
-(** The FIFO queue at a single price level. *)
+(** The FIFO queue at a single price level.
+
+    The [pl_prev_level] / [pl_next_level] fields form a doubly-linked
+    list of price levels on each side of the book, sorted by
+    aggressiveness (best at head). They're typed [price_level] rather
+    than [price_level option] so reads don't allocate a [Some] wrapper —
+    a self-referential [sentinel_level] (defined below) plays the role
+    of "no level". Compare with physical equality ([== sentinel_level])
+    to test the boundary.
+
+    Maintained alongside [PriceMap] so [Engine.fill_loop] can advance to
+    the next-best level on exhaustion in O(1) without paying the
+    [Some (k, v)] tuple allocation that [PriceMap.max_binding_opt] /
+    [min_binding_opt] would impose. *)
 type price_level = {
   pl_price : price;
   mutable pl_total_qty : qty;       (** Sum of remaining_qty at this level *)
   mutable pl_order_count : int;     (** Number of active orders *)
   mutable pl_head : int;            (** Index of first node, or -1 *)
   mutable pl_tail : int;            (** Index of last node, or -1 *)
+  mutable pl_prev_level : price_level;  (** Toward the best end (sentinel if this is best) *)
+  mutable pl_next_level : price_level;  (** Toward the worst end (sentinel if this is worst) *)
 }
+
+(** Self-referential placeholder used in place of [None] for level-list
+    boundaries and the empty [book_side.best_level]. Allocated exactly
+    once at module load. Field values are intentionally meaningless —
+    callers must check [lvl == sentinel_level] before dereferencing. *)
+let sentinel_level : price_level =
+  let rec s = {
+    pl_price = -1;
+    pl_total_qty = 0;
+    pl_order_count = 0;
+    pl_head = -1;
+    pl_tail = -1;
+    pl_prev_level = s;
+    pl_next_level = s;
+  } in s
 
 (** {2 Order Book}
 
@@ -122,11 +152,21 @@ type price_level = {
     - Bids: sorted descending (best bid = max key)
     - Asks: sorted ascending (best ask = min key) *)
 
-module PriceMap = Map.Make (Int)
+(** A side of the order book.
 
+    [levels] is a [Price_index] (pre-allocated open-addressing
+    hashtable) rather than stdlib [Map.Make(Int)] — Map's [add]
+    rebuilds tree-spine nodes per call and dominates cold-path
+    warmup allocation. Only [find] / [add] are used; the engine's
+    lazy-keep policy means no removals.
+
+    [best_level] is the head of a doubly-linked list of levels (via
+    [pl_prev_level] / [pl_next_level]) sorted by aggressiveness, so
+    [fill_loop] can advance to the next-best on exhaustion in O(1)
+    without an allocation. [== sentinel_level] when no liquidity. *)
 type book_side = {
-  mutable levels : price_level PriceMap.t;
-  mutable best : price;  (* Cached best price. 0 = no liquidity. *)
+  levels : price_level Price_index.t;
+  mutable best_level : price_level;
 }
 
 type order_book = {
