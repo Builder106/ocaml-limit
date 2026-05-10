@@ -94,7 +94,10 @@ jobs:
           # belongs in a script file checked into the repo.
           script: |
             set -euo pipefail
-            IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+            # Docker requires lowercase repository names; ${{ github.repository }}
+            # preserves owner casing, so lowercase via bash parameter expansion.
+            REPO="${{ github.repository }}"
+            IMAGE="${{ env.REGISTRY }}/${REPO,,}:latest"
 
             echo "→ pulling $IMAGE"
             docker pull "$IMAGE"
