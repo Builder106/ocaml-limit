@@ -259,8 +259,16 @@ let () =
                     | None -> Lwt.return_unit
                 in
 
+                (* [Lwt.pick] (not [Lwt.choose]) is the load-bearing
+                   choice here: when the receiver returns None on WS
+                   close, pick CANCELS the loop. With Lwt.choose the
+                   loop kept spinning forever, trying to send snapshots
+                   to a closed socket, pegging CPU at 100%+ and
+                   wedging Dream's accept loop. That bug caused every
+                   "container Up but URL hangs" incident in this
+                   project's deploy history. *)
                 Lwt.finalize
-                    (fun () -> Lwt.choose [loop (); receiver ()])
+                    (fun () -> Lwt.pick [loop (); receiver ()])
                     (fun () ->
                         connected_clients :=
                             List.filter (fun w -> w != websocket) !connected_clients;
