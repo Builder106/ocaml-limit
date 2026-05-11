@@ -138,9 +138,22 @@ jobs:
             echo "→ pulling $IMAGE"
             docker pull "$IMAGE"
 
+            # Pause the host watchdog (see /etc/systemd/system/ocaml-lob-watchdog.timer)
+            # for the duration of the swap. Otherwise it can fire between
+            # `docker stop` and `docker rm`, see the new container as down,
+            # and `docker restart` it back to running — at which point our
+            # subsequent `docker rm` either fails or leaves a stale container,
+            # and `docker run --name ocaml_lob` hits a name conflict. We
+            # restart the timer unconditionally after, even on failure, so
+            # liveness coverage resumes regardless of how the deploy exited.
+            trap 'sudo systemctl start ocaml-lob-watchdog.timer 2>/dev/null || true' EXIT
+            sudo systemctl stop ocaml-lob-watchdog.timer 2>/dev/null || true
+
             echo "→ replacing container"
+            # `-f` on rm forces removal of a running container — defense in
+            # depth in case anything (manual or otherwise) restarted it.
             docker stop ocaml_lob 2>/dev/null || true
-            docker rm   ocaml_lob 2>/dev/null || true
+            docker rm -f ocaml_lob 2>/dev/null || true
             docker run -d \
               --name ocaml_lob \
               --restart unless-stopped \
