@@ -250,7 +250,17 @@ let () =
                                          ("active_id", `Int active_id)
                                      ])
                                  ] |> Yojson.Safe.to_string in
-                                 Lwt.ignore_result (Dream.send websocket fill_msg)
+                                 (* [Lwt.async] + try/with instead of [Lwt.ignore_result]:
+                                    ignore_result discards the success value but PROPAGATES
+                                    exceptions as async Lwt failures, which accumulate
+                                    silently after a WS closes mid-broadcast and starve
+                                    the scheduler. async runs the send fire-and-forget
+                                    AND the inner try/with eats any send-to-closed-socket
+                                    failure so nothing leaks. Same shape as the
+                                    [broadcast] helper higher up. *)
+                                 Lwt.async (fun () ->
+                                     try%lwt Dream.send websocket fill_msg
+                                     with _ -> Lwt.return_unit)
                              ) in
                              let ns = (Unix.gettimeofday () -. start) *. 1_000_000_000.0 |> int_of_float in
                              Stats.record stats ns;
