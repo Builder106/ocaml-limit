@@ -1,10 +1,12 @@
-# Auto-deploy to Oracle Cloud E1 Micro on push to main.
+# CI + CD: test → build → deploy to Oracle Cloud E1 Micro on push to main.
 #
 # Flow:
-#   1. Build linux/amd64 Docker image (with GHA layer cache)
-#   2. Push to GitHub Container Registry as :latest and :sha-<short>
-#   3. SSH into the Oracle VM, pull the new image, restart the container
-#   4. Smoke-test the local endpoint inside the VM
+#   1. Run `dune build` and `dune runtest` (matching correctness +
+#      perf regression guards). Gates the rest of the pipeline.
+#   2. Build linux/amd64 Docker image (with GHA layer cache)
+#   3. Push to GitHub Container Registry as :latest and :sha-<short>
+#   4. SSH into the Oracle VM, pull the new image, restart the container
+#   5. Smoke-test the local endpoint inside the VM
 #
 # Caddy in front handles WSS termination, so the brief restart shows
 # up to a recruiter as a sub-second 502 — acceptable for a demo.
@@ -36,7 +38,36 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  test:
+    # OCaml-side CI. Catches type errors (`dune build`), matching-
+    # correctness regressions (`test_engine.ml`), and perf regressions
+    # (`perf_test.ml`'s bytes/order + throughput + p99 guards) before
+    # anything ships. ~3-5 min cache-warm; ~6-8 min on first run.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: '5.2'
+          opam-pin: false       # skip pinning the package — saves ~30s
+
+      # Only install what test/ and bench/ actually need. dream + yojson
+      # + lwt_ppx are server-only and their dep trees are slow to compile
+      # on a clean opam switch; the Docker build catches server-side
+      # type errors anyway.
+      - name: Install test deps
+        run: opam install --yes alcotest
+
+      - name: Build (lib + tests + bench)
+        run: opam exec -- dune build lib/ test/ bin/bench.exe
+
+      - name: Run tests
+        run: opam exec -- dune runtest --force
+
   build-and-push:
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -136,7 +167,8 @@ jobs:
 #   balancer can do this with `lb_policy first` and active health
 #   checks. Overkill for a demo but the path is clear.
 #
-# - To gate on tests passing first: add a `test` job that runs
-#   `dune runtest` and make `build-and-push` depend on it. Skipped
-#   here because perf_test allocates ~120MB per run and GitHub
-#   runners are tight on RAM.
+# - The `test` job intentionally skips installing dream / yojson /
+#   lwt_ppx — those are server-only and their dep trees take ~10 min
+#   to compile on a clean opam switch. Server-side type errors are
+#   still caught by `build-and-push`'s Docker build (which compiles
+#   bin/server.exe), so we don't lose coverage, just CI runtime.
