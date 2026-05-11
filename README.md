@@ -234,7 +234,6 @@ ocaml_lob/
 ## Documentation
 
 - **[ONBOARDING.md](ONBOARDING.md)** — full architecture, the six perf fixes explained, known gotchas, hang runbook
-- **[DEPLOY.md](DEPLOY.md)** — Oracle Cloud Always-Free provisioning, Caddy + Let's Encrypt, GHA auto-deploy setup
 
 ## License
 
