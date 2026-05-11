@@ -289,88 +289,119 @@ let () =
         Dream.get "/favicon.svg" (Dream.from_filesystem "." "front/favicon.svg");
         Dream.get "/social-preview.png" (Dream.from_filesystem "." "front/social-preview.png");
 
-        (* WebSocket Endpoint *)
-        Dream.get "/ws" (fun _ ->
-            Dream.websocket (fun websocket ->
-                incr active_clients;
-                (* Per-client ring cursors. Start at the producers'
-                   current seq so a freshly-connected client sees only
-                   new trades/alerts, not history. *)
-                let last_trade_seq = ref trade_ring.seq in
-                let last_alert_seq = ref alert_ring.seq in
-                let rec loop () =
-                    let%lwt () = Lwt_unix.sleep 0.5 in (* Update UI every 500ms *)
+        (* Server-Sent Events stream. Replaces the previous /ws
+           endpoint. WebSockets — even with all our async sends
+           removed — still wedged in gluten_lwt's write_loop_step
+           on every WS close because [Dream_pure.Stream.close] in
+           Dream's WS close path spawns an [Lwt.async] write-loop
+           internally that we cannot reach from our code. SSE runs
+           over plain HTTP chunked encoding; the close path does
+           not go through [close_websocket], so the gluten WS
+           spin is structurally inaccessible.
 
-                    (* 1. Order book snapshot *)
-                    let snapshot = snapshot_to_json engine |> Yojson.Safe.to_string in
-                    let%lwt () = Dream.send websocket snapshot in
+           Protocol: identical JSON payloads as before. Each event
+           is one [data: <json>\n\n] frame. Frontend uses
+           [EventSource] in place of [WebSocket]; the message
+           handler is unchanged. Manual orders moved to
+           [POST /order] since SSE is server→client only. *)
+        Dream.get "/events" (fun _ ->
+            Dream.stream
+                ~headers:[
+                    ("Content-Type", "text/event-stream");
+                    ("Cache-Control", "no-cache");
+                    (* Defeat reverse-proxy buffering (Caddy, nginx).
+                       Without this, the client sees nothing until the
+                       proxy flushes — defeats the whole point of SSE. *)
+                    ("X-Accel-Buffering", "no");
+                ]
+                (fun stream ->
+                    incr active_clients;
+                    let last_trade_seq = ref trade_ring.seq in
+                    let last_alert_seq = ref alert_ring.seq in
+                    let send_event payload =
+                        let%lwt () = Dream.write stream ("data: " ^ payload ^ "\n\n") in
+                        Dream.flush stream
+                    in
+                    let drain_sse r last_seq =
+                        let cur = r.seq in
+                        if cur = !last_seq then Lwt.return_unit
+                        else begin
+                            let start =
+                                if cur - !last_seq > stream_ring_size
+                                then cur - stream_ring_size
+                                else !last_seq
+                            in
+                            let rec loop i =
+                                if i >= cur then begin last_seq := cur; Lwt.return_unit end
+                                else
+                                    let%lwt () = send_event r.buf.(i mod stream_ring_size) in
+                                    loop (i + 1)
+                            in
+                            loop start
+                        end
+                    in
+                    let rec tick () =
+                        let%lwt () = Lwt_unix.sleep 0.5 in
+                        let snapshot = snapshot_to_json engine |> Yojson.Safe.to_string in
+                        let%lwt () = send_event snapshot in
+                        let lat = Stats.get_percentile stats 0.99 in
+                        let ops = Stats.get_throughput stats in
+                        let stats_msg = `Assoc [
+                            ("type", `String "STATS");
+                            ("latency", `Float lat);
+                            ("throughput", `Float ops)
+                        ] |> Yojson.Safe.to_string in
+                        let%lwt () = send_event stats_msg in
+                        let%lwt () = drain_sse trade_ring last_trade_seq in
+                        let%lwt () = drain_sse alert_ring last_alert_seq in
+                        tick ()
+                    in
+                    Lwt.finalize
+                        (fun () -> tick ())
+                        (fun () -> decr active_clients; Lwt.return_unit)));
 
-                    (* 2. Performance stats *)
-                    let lat = Stats.get_percentile stats 0.99 in
-                    let ops = Stats.get_throughput stats in
-                    let stats_msg = `Assoc [
-                        ("type", `String "STATS");
-                        ("latency", `Float lat);
-                        ("throughput", `Float ops)
-                    ] |> Yojson.Safe.to_string in
-                    let%lwt () = Dream.send websocket stats_msg in
-
-                    (* 3. Drain any trades + alerts produced since
-                       the last tick. Serialized writes only — no
-                       Lwt.async, nothing queued behind us. *)
-                    let%lwt () = drain_ring websocket trade_ring last_trade_seq in
-                    let%lwt () = drain_ring websocket alert_ring last_alert_seq in
-
-                    loop ()
+        (* Manual order placement. Replaces the WS ORDER message. *)
+        Dream.post "/order" (fun request ->
+            let%lwt body = Dream.body request in
+            try
+                let json = Yojson.Safe.from_string body in
+                let side =
+                    if Yojson.Safe.Util.member "side" json |> Yojson.Safe.Util.to_string = "BUY"
+                    then Buy else Ask
                 in
-
-                (* Handle incoming messages (Manual Orders from Dashboard) *)
-                let rec receiver () =
-                    match%lwt Dream.receive websocket with
-                    | Some msg ->
-                        let json = Yojson.Safe.from_string msg in
-                        (match Yojson.Safe.Util.member "type" json |> Yojson.Safe.Util.to_string with
-                         | "ORDER" ->
-                             let side = if Yojson.Safe.Util.member "side" json |> Yojson.Safe.Util.to_string = "BUY" then Buy else Ask in
-                             let price = Yojson.Safe.Util.member "price" json |> Yojson.Safe.Util.to_float |> float_to_price in
-                             let size = Yojson.Safe.Util.member "size" json |> Yojson.Safe.Util.to_int in
-                             let order = make_order ~id:(Random.int 1000000) ~side ~price ~qty:size ~order_type:Limit ~timestamp:0 in
-
-                             let start = Unix.gettimeofday () in
-                             let _ = Engine.submit engine order (fun passive_id active_id price qty _ ->
-                                 let fill_msg = `Assoc [
-                                     ("type", `String "TRADE");
-                                     ("trade", `Assoc [
-                                         ("side", `String (side_to_string side));
-                                         ("price", `Float (price_to_float price));
-                                         ("size", `Int qty);
-                                         ("passive_id", `Int passive_id);
-                                         ("active_id", `Int active_id)
-                                     ])
-                                 ] |> Yojson.Safe.to_string in
-                                 (* Push to the same ring the bot uses.
-                                    The snapshot loop on this client (and any
-                                    others) picks it up on the next 500ms
-                                    tick. Up to 500ms latency on the trade
-                                    echo, but no async send means no chance
-                                    of leaving anything in gluten's write
-                                    buffer if this WS closes. *)
-                                 push_ring trade_ring fill_msg
-                             ) in
-                             let ns = (Unix.gettimeofday () -. start) *. 1_000_000_000.0 |> int_of_float in
-                             Stats.record stats ns;
-                             receiver ()
-                         | _ -> receiver ())
-                    | None -> Lwt.return_unit
+                let price =
+                    Yojson.Safe.Util.member "price" json
+                    |> Yojson.Safe.Util.to_float |> float_to_price
                 in
+                let size =
+                    Yojson.Safe.Util.member "size" json
+                    |> Yojson.Safe.Util.to_int
+                in
+                let order = make_order ~id:(Random.int 1000000) ~side ~price
+                    ~qty:size ~order_type:Limit ~timestamp:0 in
 
-                (* [Lwt.pick] cancels the loop when the receiver returns
-                   None (clean WS close). With the broadcast-via-ring
-                   refactor there's nothing queued in gluten for this
-                   socket — every byte was awaited inside [loop ()] —
-                   so the close is clean. No more [Lwt.finalize] cleanup
-                   needed beyond decrementing the client counter. *)
-                Lwt.finalize
-                    (fun () -> Lwt.pick [loop (); receiver ()])
-                    (fun () -> decr active_clients; Lwt.return_unit)));
+                let t0 = Unix.gettimeofday () in
+                let _ = Engine.submit engine order
+                    (fun passive_id active_id price qty _ ->
+                        let fill_msg = `Assoc [
+                            ("type", `String "TRADE");
+                            ("trade", `Assoc [
+                                ("side", `String (side_to_string side));
+                                ("price", `Float (price_to_float price));
+                                ("size", `Int qty);
+                                ("passive_id", `Int passive_id);
+                                ("active_id", `Int active_id)
+                            ])
+                        ] |> Yojson.Safe.to_string in
+                        push_ring trade_ring fill_msg)
+                in
+                let ns = (Unix.gettimeofday () -. t0) *. 1_000_000_000.0 |> int_of_float in
+                Stats.record stats ns;
+                Dream.respond
+                    ~headers:[("Content-Type", "application/json")]
+                    {|{"status":"ok"}|}
+            with _ ->
+                Dream.respond ~status:`Bad_Request
+                    ~headers:[("Content-Type", "application/json")]
+                    {|{"status":"error"}|});
     ]

@@ -4,8 +4,8 @@
 
 class LOBTerminal {
     constructor() {
-        this.ws = null;
-        this.reconnectInterval = 3000;
+        this.es = null;
+        this.reconnectInterval = 3000;  // EventSource handles its own retry; kept for compat with mock-data poll
         this.depthChart = null;
         this.maxTapeEntries = 50;
         this.maxLogEntries = 30;
@@ -96,24 +96,27 @@ class LOBTerminal {
     }
 
     connect() {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
-        
-        this.ws = new WebSocket(wsUrl);
+        // EventSource (SSE) replaces the previous WebSocket. Same JSON
+        // payloads; only the transport changes. EventSource auto-reconnects
+        // on transport error, so we don't need the setTimeout from the
+        // WS version.
+        this.es = new EventSource('/events');
 
-        this.ws.onopen = () => {
+        this.es.onopen = () => {
             console.log('Terminal Link Established');
             this.updateStatus(true);
         };
 
-        this.ws.onmessage = (event) => {
+        this.es.onmessage = (event) => {
             const data = JSON.parse(event.data);
             this.handleMessage(data);
         };
 
-        this.ws.onclose = () => {
+        this.es.onerror = () => {
+            // Browser auto-retries via EventSource; we just reflect the
+            // visible state. Status flips back to LIVE when [onopen]
+            // fires on the successful reconnect.
             this.updateStatus(false);
-            setTimeout(() => this.connect(), this.reconnectInterval);
         };
     }
 
@@ -335,19 +338,18 @@ class LOBTerminal {
     handleOrderSubmit(side) {
         const price = parseFloat(document.getElementById('order-price').value);
         const size = parseInt(document.getElementById('order-qty').value);
-        
+
         this.addRiskLog('OK', `Placing ${side} order: ${size} @ ${price}`);
 
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({
-                type: 'ORDER',
-                side: side,
-                price: price,
-                size: size
-            }));
-        } else {
+        fetch('/order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ side, price, size })
+        }).then(r => {
+            if (!r.ok) throw new Error('order rejected');
+        }).catch(() => {
             this.addRiskLog('ALERT', `Gateway link down. Simulation mode active.`);
-        }
+        });
     }
 
     // --- MOCK DATA FOR DEMO ---
@@ -360,7 +362,7 @@ class LOBTerminal {
         setTimeout(() => this.addRiskLog('OK', 'Heartbeat received from gateway 1'), 1500);
 
         setInterval(() => {
-            if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
+            if (this.es && this.es.readyState === EventSource.OPEN) return;
 
             basePrice += (Math.random() - 0.5) * 2;
             
