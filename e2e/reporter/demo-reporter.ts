@@ -41,6 +41,18 @@ export default class DemoReporter implements Reporter {
   private pending: Pending[] = [];
 
   onTestEnd(test: TestCase, result: TestResult) {
+    // Only ship recordings from passing tests. Failed tests still
+    // produce a webm (Playwright captures the failure visually) but
+    // those are records of broken state, not demos worth keeping.
+    if (result.status !== 'passed') {
+      const failed = result.attachments.find((a) => a.name === 'video');
+      if (failed?.path) {
+        safeUnlink(failed.path);
+        safeRmdir(path.dirname(failed.path));
+      }
+      return;
+    }
+
     // Filename = feature slug only (e.g. `01-core`). Each .feature
     // holds exactly one scenario, so the scenario name would just be
     // redundant; the README references `assets/demos/<feature>.gif`.

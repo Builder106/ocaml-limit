@@ -39,7 +39,11 @@ for mp4 in "$SRC_DIR"/*.mp4; do
     "$out" >/dev/null 2>&1
   rm -f "$palette"
   trap - EXIT
-  ((count++))
+  # `((count++))` returns exit code 1 when the pre-increment value is
+  # 0, which `set -e` then treats as a fatal error and kills the
+  # script after the first file. Use the arithmetic substitution form
+  # instead — it always returns 0.
+  count=$((count + 1))
 done
 
 if (( count == 0 )); then
