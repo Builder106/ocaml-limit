@@ -113,6 +113,14 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Disable BuildKit's default provenance + SBOM attestations.
+          # They get pushed as additional manifests in the image index,
+          # which GHCR's UI then renders as a cosmetically-confusing
+          # "unknown/unknown" OS/Arch row alongside the real
+          # linux/amd64 entry. For a personal demo image the SLSA
+          # trail isn't load-bearing — keep the manifest clean.
+          provenance: false
+          sbom: false
 
   deploy:
     needs: build-and-push
