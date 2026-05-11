@@ -101,8 +101,7 @@ Demo videos below were recorded with Playwright + the project's local E2E suite.
 <details>
 <summary><strong>Live order book + depth chart + trade tape</strong></summary>
 
-<!-- TODO: drop in recording from e2e/demo/01-core.feature -->
-<!-- Path convention: assets/demos/01-core.gif (≤960px, 8–12 fps) -->
+![](assets/demos/01-core.gif)
 
 The dashboard streams L2 book snapshots every 500 ms over WebSocket. The depth chart on the center pane visualizes resting liquidity; the trade tape on the right shows every fill the engine produces (both from the in-process demo bot and from manual orders).
 

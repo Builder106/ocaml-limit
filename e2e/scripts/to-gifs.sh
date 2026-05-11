@@ -29,10 +29,21 @@ for mp4 in "$SRC_DIR"/*.mp4; do
   # Two-pass palette generation gives much better color than a
   # single-pass conversion (the default 256-color quantization on
   # the green/red dashboard is rough otherwise).
-  palette="$(mktemp -t demo-palette.XXXXXX.png)"
+  #
+  # Note: avoid `mktemp -t demo-palette.XXXXXX.png` — on macOS the
+  # random suffix lands AFTER the .png extension, leaving ffmpeg
+  # unable to infer the output format. A deterministic name keyed
+  # by PID + filename is fine since this script is single-threaded.
+  palette="/tmp/demo-palette-$$-$count.png"
   trap 'rm -f "$palette"' EXIT
+  # `-update 1` is required by ffmpeg >= 7 when writing a single
+  # PNG (palette). Without it, ffmpeg complains the filename has no
+  # `%03d`-style image-sequence pattern and bails with exit code != 0
+  # — which, combined with the script's set -e, used to kill the
+  # whole conversion silently after the first file.
   ffmpeg -y -i "$mp4" \
     -vf "fps=10,scale=960:-1:flags=lanczos,palettegen" \
+    -update 1 -frames:v 1 \
     "$palette" >/dev/null 2>&1
   ffmpeg -y -i "$mp4" -i "$palette" \
     -lavfi "fps=10,scale=960:-1:flags=lanczos[x];[x][1:v]paletteuse" \
