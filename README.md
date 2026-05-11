@@ -11,7 +11,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](#license)
 [![Demo](https://img.shields.io/badge/demo-live-success.svg)](https://ocaml-lob.duckdns.org/)
 
-A high-performance **limit-order-book matching engine in OCaml 5**, with a Dream WebSocket server and a Bloomberg-terminal–styled browser dashboard. The matching hot path is **allocation-free per submit** (bench-validated), achieves **~18 M orders/sec** in the clean perf test, and holds **p99 latency under 1 μs**.
+A high-performance **limit-order-book matching engine in OCaml 5**, with a Dream HTTP + Server-Sent-Events server and a Bloomberg-terminal–styled browser dashboard. The matching hot path is **allocation-free per submit** (bench-validated), achieves **~18 M orders/sec** in the clean perf test, and holds **p99 latency under 1 μs**.
 
 🟢 **Live demo:** [ocaml-lob.duckdns.org](https://ocaml-lob.duckdns.org/) — public, free-tier VM. Click the (i) in the top right for an in-app tour.
 
@@ -66,31 +66,31 @@ sequenceDiagram
     Caddy->>Server: HTTP GET /
     Server-->>User: index.html + app.js + favicon
 
-    User->>Caddy: WSS /ws (upgrade)
-    Caddy->>Server: WS upgrade
+    User->>Caddy: GET /events (SSE)
+    Caddy->>Server: chunked HTTP stream
 
     rect rgba(0, 240, 255, 0.08)
-    note over Server,Engine: every 500 ms while WS open
+    note over Server,Engine: every 500 ms while SSE open
     Server->>Engine: snapshot_to_json
     Engine-->>Server: book state via DLL walk
-    Server-->>User: SNAPSHOT (depth + spread)
+    Server-->>User: data: SNAPSHOT (depth + spread)
     end
 
     rect rgba(0, 255, 0, 0.08)
     note over Bot,Engine: bot loop, ~1 order/sec
     Bot->>Engine: submit synthetic order
     Engine-->>Bot: on_fill callback per fill
-    Bot->>Server: broadcast trade
-    Server-->>User: TRADE (tape entry)
+    Bot->>Server: push trade to ring
+    Server-->>User: data: TRADE (tape entry, drained on tick)
     end
 
-    User->>Server: manual order (WS message)
+    User->>Server: POST /order {side, price, size}
     Server->>Engine: Engine.submit
-    Engine-->>Server: on_fill
-    Server-->>User: TRADE
+    Engine-->>Server: on_fill → push to ring
+    Server-->>User: 200 {"status":"ok"} (TRADE follows via SSE)
 ```
 
-Caddy on the host handles TLS + WebSocket upgrade. The OCaml binary inside the container handles everything else.
+Caddy on the host handles TLS. The OCaml binary inside the container handles everything else. SSE replaced an earlier WebSocket transport after `gluten_lwt`'s WS close path was found to wedge the event loop in a tight retry-on-failed-write cycle (see commit `0c62bc0`).
 
 ---
 
@@ -103,23 +103,23 @@ Demo videos below were recorded with Playwright + the project's local E2E suite.
 
 ![](assets/demos/01-core.gif)
 
-The dashboard streams L2 book snapshots every 500 ms over WebSocket. The depth chart on the center pane visualizes resting liquidity; the trade tape on the right shows every fill the engine produces (both from the in-process demo bot and from manual orders).
+The dashboard streams L2 book snapshots every 500 ms over Server-Sent Events. The depth chart on the center pane visualizes resting liquidity; the trade tape on the right shows every fill the engine produces (both from the in-process demo bot and from manual orders).
 
 </details>
 
 <details>
 <summary><strong>Manual order entry with live risk feedback</strong></summary>
 
-<!-- TODO: e2e/demo/02-manual-entry.feature → gif -->
+![](assets/demos/02-manual-entry.gif)
 
-The Quick Entry panel submits orders straight into the running engine. Rejected orders surface in the Risk Engine Activity log on the left.
+The Quick Entry panel POSTs orders straight into the running engine. Rejected orders surface in the Risk Engine Activity log on the left.
 
 </details>
 
 <details>
 <summary><strong>Theme toggle (system / light / dark)</strong></summary>
 
-<!-- TODO: e2e/demo/03-theme.feature → gif -->
+![](assets/demos/03-theme.gif)
 
 Tri-state cycle on the (☀/🌙/🖥) button. System mode tracks the OS preference live — flipping macOS between light and dark while the tab is open re-themes the dashboard without a reload. Choice persists in `localStorage`. The depth chart re-paints to match.
 
@@ -128,13 +128,13 @@ Tri-state cycle on the (☀/🌙/🖥) button. System mode tracks the OS prefere
 <details>
 <summary><strong>First-visit onboarding modal</strong></summary>
 
-<!-- TODO: e2e/demo/04-onboarding.feature → gif -->
+![](assets/demos/04-onboarding.gif)
 
 Auto-opens on first visit with the headline numbers and a panel-by-panel guide. Dismissal persists in `localStorage`; the (i) icon in the header re-opens it.
 
 </details>
 
-> **For maintainers:** recording flow per the project's E2E convention — `DEMO=1 npx playwright test e2e/demo/<N>-<cluster>.feature`, then `ffmpeg -i out.mp4 -vf "fps=10,scale=960:-1" assets/demos/<N>-<cluster>.gif` (keeps under GitHub's 10 MB inline-image limit).
+> **For maintainers:** recording flow — `npm --prefix e2e run demo` records mp4s at 1440×900 into `e2e/demo-output/`, then `npm --prefix e2e run gifs` converts them to 1280px-wide GIFs in `assets/demos/`. Recorded close to the README's display resolution so the GIFs are crisp on Retina without blowing GitHub's 10 MB inline-image cap.
 
 ---
 
@@ -214,7 +214,7 @@ ocaml_lob/
 │   ├── stats.ml                   nanosecond latency tracker
 │   └── messaging.ml               OCaml 5 atomic MPSC queue
 ├── bin/
-│   ├── server.ml                  Dream HTTP + /ws + demo bot
+│   ├── server.ml                  Dream HTTP: GET /events (SSE), POST /order, demo bot
 │   ├── bench.ml                   1M-order benchmark, prints throughput + alloc
 │   └── diag.ml                    raw bytes/order measurement via Gc.minor_words
 ├── test/

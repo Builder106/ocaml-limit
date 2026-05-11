@@ -46,10 +46,16 @@ export default defineConfig({
   use: {
     baseURL: process.env.DEMO_URL ?? 'https://ocaml-lob.duckdns.org/',
     headless: true,           // still records video; saves a window
-    viewport: { width: 2560, height: 1600 },
+    // Recording at 1440x900 (was 2560x1600). The output GIF lands at
+    // 1280px wide, so 1440 source gives a clean 1.12× downscale and
+    // a crisp display on Retina at GitHub's ~890 CSS-px column
+    // width. The previous 2560 source was downscaled 2.67× into a
+    // 960px GIF — visibly blurry on Retina, and the GIF was right
+    // up against GitHub's 10 MB inline-image cap.
+    viewport: { width: 1440, height: 900 },
     video: {
       mode: 'on',
-      size: { width: 2560, height: 1600 },
+      size: { width: 1440, height: 900 },
     },
     launchOptions: { slowMo },
     actionTimeout: 15_000,
@@ -62,10 +68,10 @@ export default defineConfig({
         // Re-pin viewport at the project level — the device preset
         // overrides the top-level `use` block silently otherwise.
         ...devices['Desktop Chrome'],
-        viewport: { width: 2560, height: 1600 },
+        viewport: { width: 1440, height: 900 },
         video: {
           mode: 'on',
-          size: { width: 2560, height: 1600 },
+          size: { width: 1440, height: 900 },
         },
       },
     },
