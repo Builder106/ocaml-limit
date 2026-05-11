@@ -16,6 +16,11 @@ test-results/
 playwright-report/
 *.log
 
+# E2E suite — pure Node/TypeScript, not needed in the OCaml runtime image.
+e2e/
+ONBOARDING.md
+assets/
+
 # Note: bin/diag.ml is left in the build context — bin/dune references
 # it, so excluding it would break dune's build planning. We only build
 # `bin/server.exe` explicitly, so diag.exe isn't compiled and doesn't

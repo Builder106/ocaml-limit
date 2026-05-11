@@ -1,0 +1,13 @@
+# Manual order entry against the live book.
+# Renders to assets/demos/02-manual-entry.gif.
+
+Feature: Manual order entry
+
+  Scenario: Place a limit buy and watch it fill
+    Given I open the dashboard
+    Then the dashboard is connected
+    When I enter a price of "150.25"
+    And I enter a quantity of "100"
+    And I submit a buy order
+    Then the trade tape shows my fill
+    And the risk log records the activity

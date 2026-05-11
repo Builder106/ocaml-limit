@@ -18,3 +18,14 @@ _build/
 .history/
 *~
 *.swp
+
+# E2E (Playwright + playwright-bdd) — runtime artifacts only.
+# Committed:    e2e/{package.json, tsconfig.json, *.config.ts, reporter/,
+#               support/, steps/, demo/features/, scripts/, README.md}
+# Plus rendered GIFs in assets/demos/ once recorded.
+e2e/node_modules/
+e2e/package-lock.json
+e2e/.features-gen/
+e2e/test-results/
+e2e/demo-output/
+e2e/playwright-report/
