@@ -7,8 +7,15 @@
 # OCaml LOB
 
 [![CI](https://github.com/Builder106/ocaml_limit/actions/workflows/deploy.yml/badge.svg)](https://github.com/Builder106/ocaml_limit/actions/workflows/deploy.yml)
-[![OCaml](https://img.shields.io/badge/OCaml-5.2%2B-orange.svg)](https://ocaml.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](#license)
+[![OCaml](https://img.shields.io/badge/OCaml-5.2%2B-EC6813?logo=ocaml&logoColor=white)](https://ocaml.org/)
+[![Dream](https://img.shields.io/badge/Dream-1F8AAB?logo=ocaml&logoColor=white)](https://aantron.github.io/dream/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Chart.js](https://img.shields.io/badge/Chart.js-FF6384?logo=chartdotjs&logoColor=white)](https://www.chartjs.org/)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Playwright](https://img.shields.io/badge/Playwright-2EAD33?logo=playwright&logoColor=white)](https://playwright.dev/)
+[![Caddy](https://img.shields.io/badge/Caddy-1F88C0?logo=caddy&logoColor=white)](https://caddyserver.com/)
+[![Oracle Cloud](https://img.shields.io/badge/Oracle_Cloud-F80000?logo=oracle&logoColor=white)](https://www.oracle.com/cloud/)
 [![Demo](https://img.shields.io/badge/demo-live-success.svg)](https://ocaml-lob.duckdns.org/)
 
 A high-performance **limit-order-book matching engine in OCaml 5**, with a Dream HTTP + Server-Sent-Events server and a Bloomberg-terminal–styled browser dashboard. The matching hot path is **allocation-free per submit** (bench-validated), achieves **~18 M orders/sec** in the clean perf test, and holds **p99 latency under 1 μs**.
