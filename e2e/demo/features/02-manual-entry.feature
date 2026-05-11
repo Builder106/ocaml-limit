@@ -4,7 +4,8 @@
 Feature: Manual order entry
 
   Scenario: Place a limit buy that crosses the spread
-    Given I open the dashboard
+    Given I am a returning visitor
+    And I open the dashboard
     Then the dashboard is connected
     When I enter a price of "150.30"
     And I enter a quantity of "100"

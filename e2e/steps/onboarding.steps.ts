@@ -18,6 +18,16 @@ Given('I am a first-time visitor', async ({ page }) => {
   });
 });
 
+Given('I am a returning visitor', async ({ page }) => {
+  // Pre-set the dismissed flag so the auto-open modal never shows.
+  // Use this in feature files that don't care about the onboarding
+  // flow but DO need to click into the dashboard — without it, the
+  // modal backdrop intercepts every click.
+  await page.addInitScript(() => {
+    localStorage.setItem('onboardingSeen', '1');
+  });
+});
+
 Then('the onboarding modal opens automatically', async ({ page }) => {
   const modal = page.getByRole('dialog');
   await expect(modal).toBeVisible({ timeout: 5_000 });

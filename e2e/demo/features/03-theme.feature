@@ -4,7 +4,8 @@
 Feature: Theme toggle
 
   Scenario: Cycle through all three theme modes
-    Given I start with the "dark" theme
+    Given I am a returning visitor
+    And I start with the "dark" theme
     And I open the dashboard
     Then the dashboard is in "dark" mode
     When I click the theme toggle
