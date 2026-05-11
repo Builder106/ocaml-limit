@@ -189,6 +189,7 @@ let () =
         Dream.get "/" (Dream.from_filesystem "." "front/index.html");
         Dream.get "/app.js" (Dream.from_filesystem "." "front/app.js");
         Dream.get "/favicon.svg" (Dream.from_filesystem "." "front/favicon.svg");
+        Dream.get "/social-preview.png" (Dream.from_filesystem "." "front/social-preview.png");
 
         (* WebSocket Endpoint *)
         Dream.get "/ws" (fun _ ->
