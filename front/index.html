@@ -18,15 +18,17 @@ AESTHETIC_DNA
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
    <title>OCaml LOB — Matching Engine</title>
    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-   <!-- Theme boot: set the `dark` class on <html> before any paint so the
-        page never flashes in the wrong palette. Reads localStorage first,
-        then falls back to the OS preference. -->
+   <!-- Theme boot: three modes — 'system' (default, follows OS), 'light',
+        'dark'. Sets `data-theme` (for the icon swap) and the `dark` class
+        on <html> before any paint so the page never flashes in the wrong
+        palette. -->
    <script>
       (function () {
-         const stored = localStorage.getItem('theme');
+         const mode = localStorage.getItem('theme') || 'system';
          const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-         const dark = stored ? stored === 'dark' : systemDark;
-         if (dark) document.documentElement.classList.add('dark');
+         const isDark = mode === 'dark' || (mode === 'system' && systemDark);
+         document.documentElement.setAttribute('data-theme', mode);
+         document.documentElement.classList.toggle('dark', isDark);
       })();
    </script>
    <!-- Fonts -->
@@ -132,11 +134,14 @@ AESTHETIC_DNA
       .heatmap-ask { background: rgb(var(--heatmap-ask) / var(--heatmap-alpha)); }
       .heatmap-bid { background: rgb(var(--heatmap-bid) / var(--heatmap-alpha)); }
 
-      /* Theme-toggle icon — show sun in dark mode, moon in light mode. */
-      .theme-toggle .icon-sun  { display: none; }
-      .theme-toggle .icon-moon { display: inline; }
-      html.dark .theme-toggle .icon-sun  { display: inline; }
-      html.dark .theme-toggle .icon-moon { display: none; }
+      /* Theme-toggle icon — show the icon for the CURRENT mode. Click
+         cycles to the next one (system → light → dark → …). */
+      .theme-toggle .icon-light,
+      .theme-toggle .icon-dark,
+      .theme-toggle .icon-system { display: none; }
+      html[data-theme="light"]  .theme-toggle .icon-light  { display: inline; }
+      html[data-theme="dark"]   .theme-toggle .icon-dark   { display: inline; }
+      html[data-theme="system"] .theme-toggle .icon-system { display: inline; }
 
       @keyframes pulse-thin {
          0%, 100% { opacity: 1; }
@@ -170,9 +175,10 @@ AESTHETIC_DNA
          <div id="terminal-clock" class="text-fg-mute">2026-04-08 19:32:00</div>
          <button id="theme-toggle"
             class="theme-toggle flex items-center justify-center w-6 h-6 text-fg-mute hover:text-terminal-cyan transition-colors"
-            aria-label="Toggle theme" title="Toggle light / dark">
-            <i class="ph-bold ph-sun icon-sun text-[13px]"></i>
-            <i class="ph-bold ph-moon icon-moon text-[13px]"></i>
+            aria-label="Cycle theme" title="Cycle theme: system → light → dark">
+            <i class="ph-bold ph-monitor icon-system text-[13px]"></i>
+            <i class="ph-bold ph-sun     icon-light  text-[13px]"></i>
+            <i class="ph-bold ph-moon    icon-dark   text-[13px]"></i>
          </button>
       </div>
    </header>

@@ -29,18 +29,38 @@ class LOBTerminal {
     bindEvents() {
         window.placeOrder = (side) => this.handleOrderSubmit(side);
 
-        // Theme toggle. The `dark` class on <html> is set by the inline
-        // boot script in <head>; here we flip it, persist the choice, and
-        // re-theme the depth chart (Chart.js needs an explicit re-apply
-        // since its color props aren't bound to CSS vars).
+        // Tri-state theme toggle: system → light → dark → system. The
+        // boot script in <head> already set the initial state before
+        // first paint; here we wire up the cycle button and a media-
+        // query listener so the dashboard tracks OS changes live while
+        // in 'system' mode.
+        const systemQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+        const applyTheme = (mode) => {
+            const isDark = mode === 'dark' || (mode === 'system' && systemQuery.matches);
+            document.documentElement.setAttribute('data-theme', mode);
+            document.documentElement.classList.toggle('dark', isDark);
+            localStorage.setItem('theme', mode);
+            this.applyChartTheme();
+        };
+
         const toggle = document.getElementById('theme-toggle');
         if (toggle) {
+            const order = ['system', 'light', 'dark'];
             toggle.addEventListener('click', () => {
-                const isDark = document.documentElement.classList.toggle('dark');
-                localStorage.setItem('theme', isDark ? 'dark' : 'light');
-                this.applyChartTheme();
+                const current = document.documentElement.getAttribute('data-theme') || 'system';
+                applyTheme(order[(order.indexOf(current) + 1) % order.length]);
             });
         }
+
+        // Track OS preference changes — only meaningful when in 'system'
+        // mode; otherwise the explicit user choice wins.
+        systemQuery.addEventListener('change', (e) => {
+            if (document.documentElement.getAttribute('data-theme') === 'system') {
+                document.documentElement.classList.toggle('dark', e.matches);
+                this.applyChartTheme();
+            }
+        });
     }
 
     startClock() {
