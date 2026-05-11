@@ -154,7 +154,33 @@ let rec run_demo_bot engine =
 
 (** {2 Server Logic} *)
 
+(* SIGUSR1 dumps the main thread's call stack + GC state to stderr
+   without restarting the process. To trigger from the host:
+     kill -USR1 $(docker inspect --format '{{.State.Pid}}' ocaml_lob)
+   Then capture the dump from `docker logs --tail 200 ocaml_lob`
+   BEFORE running `docker restart`. The wedge is "container Up but
+   URL hangs"; this is how we find where the main thread is parked
+   next time it happens. *)
+let install_diagnostic_dump () =
+    Printexc.record_backtrace true;
+    Sys.set_signal Sys.sigusr1 (Sys.Signal_handle (fun _ ->
+        let cs = Printexc.get_callstack 64 in
+        let s  = Gc.stat () in
+        Printf.eprintf
+            "[diag] === SIGUSR1 dump ===\n\
+             [diag] callstack:\n%s\
+             [diag] gc heap_words=%d live_words=%d top_heap_words=%d \
+             stack_size=%d minor_collections=%d major_collections=%d \
+             compactions=%d\n\
+             [diag] connected_clients=%d bot_orders_submitted=%d\n%!"
+            (Printexc.raw_backtrace_to_string cs)
+            s.heap_words s.live_words s.top_heap_words s.stack_size
+            s.minor_collections s.major_collections s.compactions
+            (List.length !connected_clients)
+            (!bot_next_id - 1_000_000_000)))
+
 let () =
+    install_diagnostic_dump ();
     Random.self_init ();
     let config = default_config in
     let engine = Engine.create config in
