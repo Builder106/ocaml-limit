@@ -148,6 +148,90 @@ AESTHETIC_DNA
          50%      { opacity: 0.5; }
       }
       .animate-pulse-thin { animation: pulse-thin 2s infinite; }
+
+      /* Onboarding modal. Sharp borders + monospace match the terminal
+         aesthetic; theme-aware via CSS vars. */
+      #onboarding-modal {
+         position: fixed; inset: 0; z-index: 50;
+         display: none; align-items: center; justify-content: center;
+      }
+      #onboarding-modal.is-open { display: flex; }
+      #onboarding-modal .backdrop {
+         position: absolute; inset: 0;
+         background: rgb(0 0 0 / 0.65);
+         backdrop-filter: blur(2px);
+      }
+      #onboarding-modal .card {
+         position: relative;
+         max-width: 640px; width: calc(100% - 2rem);
+         max-height: calc(100vh - 4rem); overflow-y: auto;
+         background: rgb(var(--bg-panel));
+         border: 1px solid rgb(var(--border));
+         padding: 32px 36px;
+         box-shadow: 0 20px 60px rgb(0 0 0 / 0.4);
+      }
+      #onboarding-modal .card h1 {
+         color: rgb(var(--accent-cyan));
+         font-size: 18px; font-weight: 700; letter-spacing: 0.05em;
+         text-transform: uppercase;
+         margin-bottom: 6px;
+      }
+      #onboarding-modal .card .tagline {
+         color: rgb(var(--fg)); font-size: 13px; font-weight: 600;
+         margin-bottom: 18px;
+      }
+      #onboarding-modal .card .pitch {
+         color: rgb(var(--fg-mute)); font-size: 12px; line-height: 1.6;
+         margin-bottom: 22px;
+      }
+      #onboarding-modal .card .pitch .num {
+         color: rgb(var(--accent-green)); font-weight: 600;
+      }
+      #onboarding-modal .card h2 {
+         color: rgb(var(--fg-mute));
+         font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+         text-transform: uppercase;
+         margin: 0 0 10px;
+         padding-bottom: 6px;
+         border-bottom: 1px solid rgb(var(--border));
+      }
+      #onboarding-modal .card ul {
+         list-style: none; padding: 0; margin: 0 0 24px;
+         font-size: 12px; line-height: 1.7;
+      }
+      #onboarding-modal .card ul li { color: rgb(var(--fg-mute)); }
+      #onboarding-modal .card ul li b {
+         color: rgb(var(--fg)); font-weight: 600;
+         display: inline-block; min-width: 130px;
+      }
+      #onboarding-modal .card .row {
+         display: flex; gap: 12px; justify-content: flex-end;
+      }
+      #onboarding-modal .card .btn {
+         font-family: inherit; font-size: 11px; font-weight: 700;
+         text-transform: uppercase; letter-spacing: 0.05em;
+         padding: 9px 18px; border: 1px solid rgb(var(--border));
+         background: transparent; color: rgb(var(--fg));
+         cursor: pointer; transition: all 0.15s;
+         text-decoration: none; display: inline-flex; align-items: center;
+      }
+      #onboarding-modal .card .btn:hover {
+         border-color: rgb(var(--accent-cyan));
+         color: rgb(var(--accent-cyan));
+      }
+      #onboarding-modal .card .btn.primary {
+         background: rgb(var(--accent-cyan));
+         border-color: rgb(var(--accent-cyan));
+         color: rgb(var(--bg-panel));
+      }
+      #onboarding-modal .card .btn.primary:hover { opacity: 0.85; color: rgb(var(--bg-panel)); }
+      #onboarding-modal .card .close {
+         position: absolute; top: 10px; right: 12px;
+         background: none; border: none; cursor: pointer;
+         color: rgb(var(--fg-mute)); font-size: 18px; line-height: 1;
+         padding: 4px 8px;
+      }
+      #onboarding-modal .card .close:hover { color: rgb(var(--accent-cyan)); }
    </style>
 </head>
 
@@ -173,6 +257,11 @@ AESTHETIC_DNA
             </div>
          </div>
          <div id="terminal-clock" class="text-fg-mute">2026-04-08 19:32:00</div>
+         <button id="help-toggle"
+            class="flex items-center justify-center w-6 h-6 text-fg-mute hover:text-terminal-cyan transition-colors"
+            aria-label="Show onboarding" title="What is this?">
+            <i class="ph-bold ph-info text-[14px]"></i>
+         </button>
          <button id="theme-toggle"
             class="theme-toggle flex items-center justify-center w-6 h-6 text-fg-mute hover:text-terminal-cyan transition-colors"
             aria-label="Cycle theme" title="Cycle theme: system → light → dark">
@@ -292,6 +381,36 @@ AESTHETIC_DNA
          </div>
       </section>
    </main>
+
+   <!-- Onboarding modal: auto-opens on first visit (dismissal persists in
+        localStorage), re-openable via the (i) button in the header. -->
+   <div id="onboarding-modal" role="dialog" aria-modal="true" aria-labelledby="onb-title">
+      <div class="backdrop" data-close></div>
+      <div class="card">
+         <button class="close" data-close aria-label="Dismiss">✕</button>
+         <h1 id="onb-title">OCaml LOB</h1>
+         <p class="tagline">Limit Order Book matching engine in OCaml 5</p>
+         <p class="pitch">
+            <span class="num">~18 M orders/sec</span>,
+            <span class="num">p99 &lt; 1 μs</span>,
+            <span class="num">0 bytes</span> allocated per submit
+            (bench-validated). Running live on a 1/8-OCPU free-tier VM,
+            serving this dashboard over WebSockets from a Dream HTTP server.
+         </p>
+         <h2>What you're seeing</h2>
+         <ul>
+            <li><b>Order Book L2</b> live bid/ask stack, deepest on the outside</li>
+            <li><b>Liquidity Depth</b> DOM visualization of resting liquidity</li>
+            <li><b>Trade Tape</b> real-time fills generated by an in-process market-making bot</li>
+            <li><b>Risk Engine</b> pre-trade gate activity (price band, position limit)</li>
+            <li><b>Quick Entry</b> submit a manual order against the live book</li>
+         </ul>
+         <div class="row">
+            <a class="btn" href="https://github.com/Builder106/ocaml_limit" target="_blank" rel="noopener">View Code</a>
+            <button class="btn primary" data-close>Explore →</button>
+         </div>
+      </div>
+   </div>
 
    <script src="app.js"></script>
 </body>

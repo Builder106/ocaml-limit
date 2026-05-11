@@ -29,6 +29,27 @@ class LOBTerminal {
     bindEvents() {
         window.placeOrder = (side) => this.handleOrderSubmit(side);
 
+        // Onboarding modal: opens automatically on first visit; dismissal
+        // persists via localStorage. The `?` button in the header
+        // re-opens it for repeat visitors. Esc + backdrop also dismiss.
+        const modal = document.getElementById('onboarding-modal');
+        const openOnboarding = () => modal && modal.classList.add('is-open');
+        const closeOnboarding = () => {
+            if (!modal) return;
+            modal.classList.remove('is-open');
+            localStorage.setItem('onboardingSeen', '1');
+        };
+        if (modal) {
+            modal.querySelectorAll('[data-close]').forEach(el =>
+                el.addEventListener('click', closeOnboarding));
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && modal.classList.contains('is-open')) closeOnboarding();
+            });
+            if (!localStorage.getItem('onboardingSeen')) openOnboarding();
+        }
+        const help = document.getElementById('help-toggle');
+        if (help) help.addEventListener('click', openOnboarding);
+
         // Tri-state theme toggle: system → light → dark → system. The
         // boot script in <head> already set the initial state before
         // first paint; here we wire up the cycle button and a media-
