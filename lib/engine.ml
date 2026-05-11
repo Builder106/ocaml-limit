@@ -208,14 +208,15 @@ let rec fill_loop engine order on_fill opposite_book =
                 in
                 let new_idx = Pool.alloc engine.pool reloaded_order in
                 let tail_idx = best_level.pl_tail in
-                if tail_idx = -1 then (
-                  best_level.pl_head <- new_idx;
-                  best_level.pl_tail <- new_idx)
-                else
-                  let tail_node = Pool.get engine.pool tail_idx in
-                  tail_node.qn_next <- new_idx;
-                  (Pool.get engine.pool new_idx).qn_prev <- tail_idx;
-                  best_level.pl_tail <- new_idx;
+                (if tail_idx = -1 then begin
+                   best_level.pl_head <- new_idx;
+                   best_level.pl_tail <- new_idx
+                 end else begin
+                   let tail_node = Pool.get engine.pool tail_idx in
+                   tail_node.qn_next <- new_idx;
+                   (Pool.get engine.pool new_idx).qn_prev <- tail_idx;
+                   best_level.pl_tail <- new_idx
+                 end);
                 best_level.pl_total_qty <- best_level.pl_total_qty + reload_qty;
                 best_level.pl_order_count <- best_level.pl_order_count + 1)
               else ()
@@ -261,14 +262,21 @@ let submit engine order on_fill =
           let was_empty = level.pl_head = -1 in
           let node_idx = Pool.alloc engine.pool order in
           let tail_idx = level.pl_tail in
-          if tail_idx = -1 then (
-            level.pl_head <- node_idx;
-            level.pl_tail <- node_idx)
-          else
-            let tail_node = Pool.get engine.pool tail_idx in
-            tail_node.qn_next <- node_idx;
-            (Pool.get engine.pool node_idx).qn_prev <- tail_idx;
-            level.pl_tail <- node_idx;
+          (* begin/end here is load-bearing: without it, OCaml extends
+             the else's `let tail_node = ... in <seq>` body to swallow
+             every subsequent semicolon-separated statement, so the
+             pl_total_qty / pl_order_count updates AND the resurrection
+             check below all silently move INTO the else branch and
+             never execute on the [tail_idx = -1] path. *)
+          (if tail_idx = -1 then begin
+             level.pl_head <- node_idx;
+             level.pl_tail <- node_idx
+           end else begin
+             let tail_node = Pool.get engine.pool tail_idx in
+             tail_node.qn_next <- node_idx;
+             (Pool.get engine.pool node_idx).qn_prev <- tail_idx;
+             level.pl_tail <- node_idx
+           end);
           level.pl_total_qty <- level.pl_total_qty + order.remaining_qty;
           level.pl_order_count <- level.pl_order_count + 1;
           (* Resurrection: if the level was empty (lazily kept after a
