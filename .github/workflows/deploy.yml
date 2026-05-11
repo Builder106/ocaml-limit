@@ -3,7 +3,8 @@
 # Flow:
 #   1. Run `dune build` and `dune runtest` (matching correctness +
 #      perf regression guards). Gates the rest of the pipeline.
-#   2. Build linux/amd64 Docker image (with GHA layer cache)
+#   2. Build multi-arch Docker image (linux/amd64 + linux/arm64,
+#      with GHA layer cache + QEMU emulation for arm64)
 #   3. Push to GitHub Container Registry as :latest and :sha-<short>
 #   4. SSH into the Oracle VM, pull the new image, restart the container
 #   5. Smoke-test the local endpoint inside the VM
@@ -79,6 +80,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # QEMU emulator registers binfmt handlers so buildx can produce
+      # arm64 layers on an amd64 GHA runner. ~30s to install on
+      # first run; subsequent runs hit the action's internal cache.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -98,11 +107,16 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=sha-,format=short
 
+      # Multi-arch: amd64 for the Oracle VM (E2.1.Micro is x86), arm64
+      # so Apple Silicon developers can `docker pull` without --platform
+      # flags. arm64 build runs under QEMU emulation — slower than
+      # native (adds ~1-2 min) but the OCaml compile is single-threaded
+      # so the overhead is bounded.
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
