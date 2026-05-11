@@ -18,7 +18,12 @@
  * otherwise flash on screen.)
  */
 
-import { test as base, type Page, type Locator } from '@playwright/test';
+// playwright-bdd v7 requires step files to use `createBdd(test)` where
+// `test` is extended from playwright-bdd's own base — not from
+// @playwright/test directly. The BDD test inherits everything from
+// the Playwright test plus a BDD context that createBdd reads off.
+import { test as base } from 'playwright-bdd';
+import { type Page, type Locator } from '@playwright/test';
 
 const TYPE_DELAY = Number(process.env.DEMO_TYPE_DELAY ?? 70);
 
