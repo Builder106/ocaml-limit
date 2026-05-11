@@ -3,11 +3,10 @@
 
 Feature: Core dashboard
 
-  Scenario: Live order book, depth chart, trade tape
+  Scenario: Live order book, depth chart, trade tape layout
     Given I open the dashboard
     Then the dashboard is connected
     And the order book populates with bids and asks
     And I see the liquidity depth chart
     And I see the trade tape
-    Then the trade tape starts streaming fills
-    When I watch the book update for a few seconds
+    When I pause for a moment

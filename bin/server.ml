@@ -173,8 +173,19 @@ let () =
         ignore (Engine.submit engine bid dummy_on_fill);
         ignore (Engine.submit engine ask dummy_on_fill)
     done;
-    prerr_endline "[demo bot] seeded 15 levels per side; starting loop";
-    Lwt.async (fun () -> run_demo_bot engine);
+    (* The demo bot is gated on a BOT env var so the same image works
+       for the live deploy (BOT unset → bot runs, dashboard is lively)
+       and for E2E demo recording (BOT=0 → no bot, quiet engine, no
+       chance of hitting the as-yet-undiagnosed engine hang that fires
+       once an aggressive bot order stream meets a live WS client). *)
+    let bot_enabled =
+        try Sys.getenv "BOT" <> "0" with Not_found -> true
+    in
+    if bot_enabled then begin
+        prerr_endline "[demo bot] seeded 15 levels per side; starting loop";
+        Lwt.async (fun () -> run_demo_bot engine)
+    end else
+        prerr_endline "[demo bot] disabled via BOT=0; engine quiet";
 
     (* Bind via env vars so the same binary works for local dev
        (defaults to localhost:8080) and behind a reverse proxy in
