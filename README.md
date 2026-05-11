@@ -1,7 +1,7 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="front/social-preview.png">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.png">
   <source media="(prefers-color-scheme: light)" srcset="assets/banner-light.png">
-  <img alt="OCaml LOB — Limit-Order-Book Matching Engine in OCaml 5" src="front/social-preview.png">
+  <img alt="OCaml LOB — Limit-Order-Book Matching Engine in OCaml 5" src="assets/banner-dark.png">
 </picture>
 
 # OCaml LOB
