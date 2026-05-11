@@ -81,27 +81,9 @@ let push_ring r s =
     r.buf.(r.seq mod stream_ring_size) <- s;
     r.seq <- r.seq + 1
 
-(* Send entries [!last_seq .. r.seq) on [ws], updating [last_seq]. If
-   the client has fallen behind by more than the ring's capacity,
-   the oldest missed entries are dropped (we jump forward to the
-   tail-most stream_ring_size entries). *)
-let drain_ring ws r last_seq =
-    let cur = r.seq in
-    if cur = !last_seq then Lwt.return_unit
-    else begin
-        let start =
-            if cur - !last_seq > stream_ring_size
-            then cur - stream_ring_size
-            else !last_seq
-        in
-        let rec loop i =
-            if i >= cur then begin last_seq := cur; Lwt.return_unit end
-            else
-                let%lwt () = Dream.send ws r.buf.(i mod stream_ring_size) in
-                loop (i + 1)
-        in
-        loop start
-    end
+(* Drain helper is inlined into the SSE handler (see [drain_sse]
+   below the route table) — the WebSocket-specific [drain_ring]
+   that used to live here is gone with the /ws route. *)
 
 let trade_ring = mk_ring ()
 let alert_ring = mk_ring ()
