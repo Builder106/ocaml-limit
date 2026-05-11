@@ -38,19 +38,77 @@ let snapshot_to_json (engine : Engine.t) =
         ("bids", side_to_json engine.book.bids);
     ]
 
-(** {2 Broadcast State}
+(** {2 Fan-out Rings}
 
-    Every connected dashboard receives bot-generated trades and risk
-    alerts. The list is mutated only on connect/disconnect; iteration
-    is safe because Dream's default Lwt scheduler is single-threaded. *)
+    Bot fills, manual fills, and risk alerts are serialized once and
+    written into a fixed-size ring keyed by a monotonic sequence
+    number. Each connected WS reads only from the ring, inside its own
+    serialized snapshot loop — so every byte that hits a socket has
+    been awaited by the per-client task that owns that socket.
 
-let connected_clients : Dream.websocket list ref = ref []
+    Previously this module used a fire-and-forget broadcast: each
+    producer iterated [connected_clients] and spawned [Lwt.async
+    (Dream.send ws msg)] per client. Under bot load with a client that
+    subsequently disconnected, the queued frames piled up inside
+    gluten_lwt's internal write buffer. Once the socket was closed,
+    gluten's [write_loop_step] entered a tight retry-on-failed-write
+    cycle (Trivial_promises.fail caught by Sequential_composition.catch,
+    no yield between iterations) and pegged a core. SIGUSR1 dump on
+    2026-05-11 caught the loop mid-spin. Our [Lwt.pick] cancellation
+    and [try%lwt] guard were both *above* gluten; the bug was in the
+    layer below.
 
-let broadcast (msg : string) =
-    List.iter (fun ws ->
-        Lwt.async (fun () ->
-            try%lwt Dream.send ws msg with _ -> Lwt.return_unit))
-    !connected_clients
+    Pull-from-ring eliminates the entire class of bug: nothing is
+    queued for a closed socket because nothing is queued at all —
+    each [Dream.send] happens inside the cancellable per-client loop
+    and is awaited.
+
+    Ring is bounded; a client lagging more than [ring_size] entries
+    loses the oldest. Acceptable for a trade tape — viewers see the
+    most recent activity, not history. *)
+
+let stream_ring_size = 256
+
+type stream_ring = {
+    buf : string array;
+    mutable seq : int;   (* monotonic, total ever pushed *)
+}
+
+let mk_ring () =
+    { buf = Array.make stream_ring_size ""; seq = 0 }
+
+let push_ring r s =
+    r.buf.(r.seq mod stream_ring_size) <- s;
+    r.seq <- r.seq + 1
+
+(* Send entries [!last_seq .. r.seq) on [ws], updating [last_seq]. If
+   the client has fallen behind by more than the ring's capacity,
+   the oldest missed entries are dropped (we jump forward to the
+   tail-most stream_ring_size entries). *)
+let drain_ring ws r last_seq =
+    let cur = r.seq in
+    if cur = !last_seq then Lwt.return_unit
+    else begin
+        let start =
+            if cur - !last_seq > stream_ring_size
+            then cur - stream_ring_size
+            else !last_seq
+        in
+        let rec loop i =
+            if i >= cur then begin last_seq := cur; Lwt.return_unit end
+            else
+                let%lwt () = Dream.send ws r.buf.(i mod stream_ring_size) in
+                loop (i + 1)
+        in
+        loop start
+    end
+
+let trade_ring = mk_ring ()
+let alert_ring = mk_ring ()
+
+(* Retained only so the SIGUSR1 dump can report client count. Not
+   iterated for sends. *)
+let active_clients = ref 0
 
 (** {2 Demo Bot}
 
@@ -85,7 +143,7 @@ let make_bot_on_fill ~aggressive_side =
                 ("active_id", `Int active_id);
             ]);
         ] |> Yojson.Safe.to_string in
-        broadcast msg
+        push_ring trade_ring msg
 
 let submit_bot_order engine ~side ~price ~qty =
     let order = make_order ~id:(next_bot_id ()) ~side ~price ~qty
@@ -109,7 +167,7 @@ let broadcast_random_alert () =
         ("type",    `String "RISK_ALERT");
         ("message", `String msg);
     ] |> Yojson.Safe.to_string in
-    broadcast json
+    push_ring alert_ring json
 
 (* Single iteration of bot behavior. Action distribution:
    55% aggressive cross  -> generates a fill, lights up the tape
@@ -172,12 +230,15 @@ let install_diagnostic_dump () =
              [diag] gc heap_words=%d live_words=%d top_heap_words=%d \
              stack_size=%d minor_collections=%d major_collections=%d \
              compactions=%d\n\
-             [diag] connected_clients=%d bot_orders_submitted=%d\n%!"
+             [diag] active_clients=%d bot_orders_submitted=%d \
+             trade_seq=%d alert_seq=%d\n%!"
             (Printexc.raw_backtrace_to_string cs)
             s.heap_words s.live_words s.top_heap_words s.stack_size
             s.minor_collections s.major_collections s.compactions
-            (List.length !connected_clients)
-            (!bot_next_id - 1_000_000_000)))
+            !active_clients
+            (!bot_next_id - 1_000_000_000)
+            trade_ring.seq
+            alert_ring.seq))
 
 let () =
     install_diagnostic_dump ();
@@ -231,15 +292,20 @@ let () =
         (* WebSocket Endpoint *)
         Dream.get "/ws" (fun _ ->
             Dream.websocket (fun websocket ->
-                connected_clients := websocket :: !connected_clients;
+                incr active_clients;
+                (* Per-client ring cursors. Start at the producers'
+                   current seq so a freshly-connected client sees only
+                   new trades/alerts, not history. *)
+                let last_trade_seq = ref trade_ring.seq in
+                let last_alert_seq = ref alert_ring.seq in
                 let rec loop () =
                     let%lwt () = Lwt_unix.sleep 0.5 in (* Update UI every 500ms *)
-                    
-                    (* 1. Send Order Book Snapshot *)
+
+                    (* 1. Order book snapshot *)
                     let snapshot = snapshot_to_json engine |> Yojson.Safe.to_string in
                     let%lwt () = Dream.send websocket snapshot in
-                    
-                    (* 2. Send Performance Stats *)
+
+                    (* 2. Performance stats *)
                     let lat = Stats.get_percentile stats 0.99 in
                     let ops = Stats.get_throughput stats in
                     let stats_msg = `Assoc [
@@ -248,7 +314,13 @@ let () =
                         ("throughput", `Float ops)
                     ] |> Yojson.Safe.to_string in
                     let%lwt () = Dream.send websocket stats_msg in
-                    
+
+                    (* 3. Drain any trades + alerts produced since
+                       the last tick. Serialized writes only — no
+                       Lwt.async, nothing queued behind us. *)
+                    let%lwt () = drain_ring websocket trade_ring last_trade_seq in
+                    let%lwt () = drain_ring websocket alert_ring last_alert_seq in
+
                     loop ()
                 in
 
@@ -263,7 +335,7 @@ let () =
                              let price = Yojson.Safe.Util.member "price" json |> Yojson.Safe.Util.to_float |> float_to_price in
                              let size = Yojson.Safe.Util.member "size" json |> Yojson.Safe.Util.to_int in
                              let order = make_order ~id:(Random.int 1000000) ~side ~price ~qty:size ~order_type:Limit ~timestamp:0 in
-                             
+
                              let start = Unix.gettimeofday () in
                              let _ = Engine.submit engine order (fun passive_id active_id price qty _ ->
                                  let fill_msg = `Assoc [
@@ -276,17 +348,14 @@ let () =
                                          ("active_id", `Int active_id)
                                      ])
                                  ] |> Yojson.Safe.to_string in
-                                 (* [Lwt.async] + try/with instead of [Lwt.ignore_result]:
-                                    ignore_result discards the success value but PROPAGATES
-                                    exceptions as async Lwt failures, which accumulate
-                                    silently after a WS closes mid-broadcast and starve
-                                    the scheduler. async runs the send fire-and-forget
-                                    AND the inner try/with eats any send-to-closed-socket
-                                    failure so nothing leaks. Same shape as the
-                                    [broadcast] helper higher up. *)
-                                 Lwt.async (fun () ->
-                                     try%lwt Dream.send websocket fill_msg
-                                     with _ -> Lwt.return_unit)
+                                 (* Push to the same ring the bot uses.
+                                    The snapshot loop on this client (and any
+                                    others) picks it up on the next 500ms
+                                    tick. Up to 500ms latency on the trade
+                                    echo, but no async send means no chance
+                                    of leaving anything in gluten's write
+                                    buffer if this WS closes. *)
+                                 push_ring trade_ring fill_msg
                              ) in
                              let ns = (Unix.gettimeofday () -. start) *. 1_000_000_000.0 |> int_of_float in
                              Stats.record stats ns;
@@ -295,18 +364,13 @@ let () =
                     | None -> Lwt.return_unit
                 in
 
-                (* [Lwt.pick] (not [Lwt.choose]) is the load-bearing
-                   choice here: when the receiver returns None on WS
-                   close, pick CANCELS the loop. With Lwt.choose the
-                   loop kept spinning forever, trying to send snapshots
-                   to a closed socket, pegging CPU at 100%+ and
-                   wedging Dream's accept loop. That bug caused every
-                   "container Up but URL hangs" incident in this
-                   project's deploy history. *)
+                (* [Lwt.pick] cancels the loop when the receiver returns
+                   None (clean WS close). With the broadcast-via-ring
+                   refactor there's nothing queued in gluten for this
+                   socket — every byte was awaited inside [loop ()] —
+                   so the close is clean. No more [Lwt.finalize] cleanup
+                   needed beyond decrementing the client counter. *)
                 Lwt.finalize
                     (fun () -> Lwt.pick [loop (); receiver ()])
-                    (fun () ->
-                        connected_clients :=
-                            List.filter (fun w -> w != websocket) !connected_clients;
-                        Lwt.return_unit)));
+                    (fun () -> decr active_clients; Lwt.return_unit)));
     ]
