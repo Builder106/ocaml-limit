@@ -1,10 +1,10 @@
-# Manual order entry against the live book.
-# Renders to assets/demos/02-manual-entry.gif.
+# Manual order entry against the live book, light theme.
+# Renders to assets/demos/02-manual-entry-light.gif.
 
-Feature: Manual order entry
+Feature: Manual order entry (light)
 
   Scenario: Place a limit buy that crosses the spread
-    Given I am a returning visitor
+    Given I am a returning visitor in "light" mode
     And I open the dashboard
     Then the dashboard is connected
     When I enter a price of "150.30"

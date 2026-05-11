@@ -18,6 +18,16 @@ Given('I am a first-time visitor', async ({ page }) => {
   });
 });
 
+Given('I am a first-time visitor in {string} mode', async ({ page }, theme: string) => {
+  // Same as above, but also pre-pins the theme so we can record a
+  // light and a dark variant of the same scenario for the README's
+  // <picture media="(prefers-color-scheme: ...)"> swap.
+  await page.addInitScript((t: string) => {
+    localStorage.removeItem('onboardingSeen');
+    localStorage.setItem('theme', t);
+  }, theme);
+});
+
 Given('I am a returning visitor', async ({ page }) => {
   // Pre-set the dismissed flag so the auto-open modal never shows.
   // Use this in feature files that don't care about the onboarding
@@ -26,6 +36,15 @@ Given('I am a returning visitor', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('onboardingSeen', '1');
   });
+});
+
+Given('I am a returning visitor in {string} mode', async ({ page }, theme: string) => {
+  // Same as above, with the theme pinned. Pair this with a copy of
+  // the scenario per theme to feed the README's <picture> swap.
+  await page.addInitScript((t: string) => {
+    localStorage.setItem('onboardingSeen', '1');
+    localStorage.setItem('theme', t);
+  }, theme);
 });
 
 Then('the onboarding modal opens automatically', async ({ page }) => {

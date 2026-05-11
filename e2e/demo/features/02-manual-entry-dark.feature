@@ -1,0 +1,14 @@
+# Manual order entry against the live book, dark theme.
+# Renders to assets/demos/02-manual-entry-dark.gif.
+
+Feature: Manual order entry (dark)
+
+  Scenario: Place a limit buy that crosses the spread
+    Given I am a returning visitor in "dark" mode
+    And I open the dashboard
+    Then the dashboard is connected
+    When I enter a price of "150.30"
+    And I enter a quantity of "100"
+    And I submit a buy order
+    Then the trade tape shows my fill
+    And the risk log records the activity

@@ -101,7 +101,10 @@ Demo videos below were recorded with Playwright + the project's local E2E suite.
 <details>
 <summary><strong>Live order book + depth chart + trade tape</strong></summary>
 
-![](assets/demos/01-core.gif)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/demos/01-core-dark.gif">
+  <img src="assets/demos/01-core-light.gif" alt="Live order book, depth chart, and trade tape">
+</picture>
 
 The dashboard streams L2 book snapshots every 500 ms over Server-Sent Events. The depth chart on the center pane visualizes resting liquidity; the trade tape on the right shows every fill the engine produces (both from the in-process demo bot and from manual orders).
 
@@ -110,31 +113,28 @@ The dashboard streams L2 book snapshots every 500 ms over Server-Sent Events. Th
 <details>
 <summary><strong>Manual order entry with live risk feedback</strong></summary>
 
-![](assets/demos/02-manual-entry.gif)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/demos/02-manual-entry-dark.gif">
+  <img src="assets/demos/02-manual-entry-light.gif" alt="Submitting a manual order from the Quick Entry panel">
+</picture>
 
 The Quick Entry panel POSTs orders straight into the running engine. Rejected orders surface in the Risk Engine Activity log on the left.
 
 </details>
 
 <details>
-<summary><strong>Theme toggle (system / light / dark)</strong></summary>
-
-![](assets/demos/03-theme.gif)
-
-Tri-state cycle on the (☀/🌙/🖥) button. System mode tracks the OS preference live — flipping macOS between light and dark while the tab is open re-themes the dashboard without a reload. Choice persists in `localStorage`. The depth chart re-paints to match.
-
-</details>
-
-<details>
 <summary><strong>First-visit onboarding modal</strong></summary>
 
-![](assets/demos/04-onboarding.gif)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/demos/04-onboarding-dark.gif">
+  <img src="assets/demos/04-onboarding-light.gif" alt="First-visit onboarding modal: open, dismiss, re-open via info icon">
+</picture>
 
 Auto-opens on first visit with the headline numbers and a panel-by-panel guide. Dismissal persists in `localStorage`; the (i) icon in the header re-opens it.
 
 </details>
 
-> **For maintainers:** recording flow — `npm --prefix e2e run demo` records mp4s at 1440×900 into `e2e/demo-output/`, then `npm --prefix e2e run gifs` converts them to 1280px-wide GIFs in `assets/demos/`. Recorded close to the README's display resolution so the GIFs are crisp on Retina without blowing GitHub's 10 MB inline-image cap.
+> **For maintainers:** recording flow — `npm --prefix e2e run demo` records mp4s at 1440×900 into `e2e/demo-output/`, then `npm --prefix e2e run gifs` converts them to 1280px-wide GIFs in `assets/demos/`. Every feature has a `-light` and `-dark` variant; the README embeds them via `<picture media="(prefers-color-scheme: dark)">` so the active gif follows the reader's browser theme. Recorded close to the README's display resolution so the GIFs are crisp on Retina without blowing GitHub's 10 MB inline-image cap.
 
 ---
 

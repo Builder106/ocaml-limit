@@ -1,10 +1,11 @@
-# Core dashboard tour — what a visitor sees on first paint.
-# Renders to assets/demos/01-core.gif (after `npm run gifs`).
+# Core dashboard tour, dark theme.
+# Renders to assets/demos/01-core-dark.gif (after `npm run gifs`).
+# Paired with 01-core-light.feature for the README's <picture> swap.
 
-Feature: Core dashboard
+Feature: Core dashboard (dark)
 
   Scenario: Live order book, depth chart, trade tape layout
-    Given I am a returning visitor
+    Given I am a returning visitor in "dark" mode
     And I open the dashboard
     Then the dashboard is connected
     And the order book populates with bids and asks
