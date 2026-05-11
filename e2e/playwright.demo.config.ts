@@ -20,12 +20,13 @@ import path from 'node:path';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// playwright-bdd v7 uses `paths` for feature files and `require` for
+// step / support module globs. (v8 renamed these to `features` /
+// `steps`; we pin v7 in package.json for stability.) Paths are
+// relative to this config file.
 const testDir = defineBddConfig({
-  features: path.join(__dirname, 'demo/features/*.feature'),
-  steps: [
-    path.join(__dirname, 'steps/**/*.ts'),
-    path.join(__dirname, 'support/**/*.ts'),
-  ],
+  paths: ['demo/features/*.feature'],
+  require: ['steps/**/*.ts', 'support/**/*.ts'],
   outputDir: path.join(__dirname, '.features-gen/demo'),
 });
 
