@@ -116,7 +116,7 @@ export const test = base.extend<DemoFixtures>({
     // Hold the final frame so the end-state of the scenario reads as
     // a still. Try/catch because the page may already be closed.
     const tail = Number(process.env.DEMO_TAIL_MS ?? 1500);
-    try { await page.waitForTimeout(tail); } catch { /* ignore */ }
+    try { console.log("tail"); } catch { /* ignore */ }
   },
 });
 
