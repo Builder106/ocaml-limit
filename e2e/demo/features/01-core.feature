@@ -4,7 +4,8 @@
 Feature: Core dashboard
 
   Scenario: Live order book, depth chart, trade tape layout
-    Given I open the dashboard
+    Given I am a returning visitor
+    And I open the dashboard
     Then the dashboard is connected
     And the order book populates with bids and asks
     And I see the liquidity depth chart
