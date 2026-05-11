@@ -1,18 +1,34 @@
 <!--
 AESTHETIC_DNA
-- Core: Terminal Obsidian (#0a0a0a)
-- Primary Accents: Bloomberg Green (#00FF00), Bloomberg Red (#FF0000), Bloomberg Cyan (#00F0FF)
+- Core: theme-aware via CSS variables (dark = terminal obsidian, light = paper white)
+- Primary Accents: bid green / ask red / accent cyan — both palettes share the semantic
+  meaning but use stronger saturation in dark and lower in light for legibility
 - Typography: IBM Plex Mono for Data, Inter for UI
 - Effects: Sharp borders, High Density, Zero rounded corners
+
+  Theme is set by toggling the `dark` class on <html>. Persistence + system-
+  preference detection happens in the inline boot script below (head, runs
+  before render to avoid FOUC).
 -->
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 
 <head>
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
    <title>OCaml LOB — Matching Engine</title>
    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+   <!-- Theme boot: set the `dark` class on <html> before any paint so the
+        page never flashes in the wrong palette. Reads localStorage first,
+        then falls back to the OS preference. -->
+   <script>
+      (function () {
+         const stored = localStorage.getItem('theme');
+         const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+         const dark = stored ? stored === 'dark' : systemDark;
+         if (dark) document.documentElement.classList.add('dark');
+      })();
+   </script>
    <!-- Fonts -->
    <link rel="preconnect" href="https://fonts.googleapis.com">
    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,6 +40,9 @@ AESTHETIC_DNA
    <script src="https://unpkg.com/@phosphor-icons/web"></script>
    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
    <script>
+      // Colors are stored as space-separated RGB triplets so Tailwind's
+      // `<alpha-value>` slash syntax (e.g. `bg-terminal-cyan/30`) still
+      // works through CSS variables. See :root / .dark blocks in <style>.
       tailwind.config = {
          darkMode: 'class',
          theme: {
@@ -34,94 +53,127 @@ AESTHETIC_DNA
                },
                colors: {
                   terminal: {
-                     bg: '#000000',
-                     border: '#1a1a1a',
-                     header: '#0a0a0a',
-                     cyan: '#00f0ff',
-                     green: '#00ff00',
-                     red: '#ff0000',
-                     amber: '#ffb000',
-                  }
+                     bg:     'rgb(var(--bg-page) / <alpha-value>)',
+                     panel:  'rgb(var(--bg-panel) / <alpha-value>)',
+                     border: 'rgb(var(--border) / <alpha-value>)',
+                     header: 'rgb(var(--bg-header) / <alpha-value>)',
+                     cyan:   'rgb(var(--accent-cyan) / <alpha-value>)',
+                     green:  'rgb(var(--accent-green) / <alpha-value>)',
+                     red:    'rgb(var(--accent-red) / <alpha-value>)',
+                     amber:  'rgb(var(--accent-amber) / <alpha-value>)',
+                  },
+                  // Text foreground — three weights, theme-aware.
+                  fg:        'rgb(var(--fg) / <alpha-value>)',
+                  'fg-mute': 'rgb(var(--fg-mute) / <alpha-value>)',
+                  'fg-dim':  'rgb(var(--fg-dim) / <alpha-value>)',
                }
             }
          }
       }
    </script>
    <style>
+      /* ───── Light palette (default). ──────────────────────────────── */
+      :root {
+         --bg-page:      250 250 250;
+         --bg-panel:     255 255 255;
+         --bg-header:    244 244 245;
+         --border:       228 228 231;
+         --row-hover:    243 244 246;
+         --fg:            31  41  55;   /* gray-800 */
+         --fg-mute:     107 114 128;    /* gray-500 */
+         --fg-dim:      156 163 175;    /* gray-400 */
+         --accent-cyan:   8 145 178;    /* cyan-600 */
+         --accent-green: 22 163  74;    /* green-600 */
+         --accent-red:  220  38  38;    /* red-600 */
+         --accent-amber: 217 119   6;   /* amber-600 */
+         --heatmap-ask: 220  38  38;    /* used with low alpha */
+         --heatmap-bid:  22 163  74;
+         --heatmap-alpha: 0.06;
+      }
+
+      /* ───── Dark palette (Bloomberg-terminal aesthetic, original). ── */
+      html.dark {
+         --bg-page:        0   0   0;
+         --bg-panel:      10  10  10;
+         --bg-header:     10  10  10;
+         --border:        26  26  26;
+         --row-hover:     17  17  17;
+         --fg:           209 213 219;   /* gray-300 */
+         --fg-mute:      107 114 128;   /* gray-500 */
+         --fg-dim:        82  82  91;   /* gray-700 */
+         --accent-cyan:    0 240 255;
+         --accent-green:   0 255   0;
+         --accent-red:   255   0   0;
+         --accent-amber: 255 176   0;
+         --heatmap-ask:  153  27  27;
+         --heatmap-bid:   21 128  61;
+         --heatmap-alpha: 0.4;
+      }
+
       body {
-         background-color: #000;
+         background-color: rgb(var(--bg-page));
+         color: rgb(var(--fg));
       }
 
-      .no-scrollbar::-webkit-scrollbar {
-         display: none;
-      }
-
-      .grid-line {
-         border-color: #1a1a1a;
-      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
 
       .panel-header {
-         background: #0a0a0a;
-         border-bottom: 1px solid #1a1a1a;
-         color: #666;
+         background: rgb(var(--bg-header));
+         border-bottom: 1px solid rgb(var(--border));
+         color: rgb(var(--fg-mute));
          font-size: 10px;
          font-weight: 600;
          text-transform: uppercase;
          letter-spacing: 0.05em;
       }
 
-      .data-row:hover {
-         background: #111;
-      }
+      .data-row:hover { background: rgb(var(--row-hover)); }
 
-      .heatmap-ask {
-         background: rgba(153, 27, 27, 0.4);
-      }
+      .heatmap-ask { background: rgb(var(--heatmap-ask) / var(--heatmap-alpha)); }
+      .heatmap-bid { background: rgb(var(--heatmap-bid) / var(--heatmap-alpha)); }
 
-      .heatmap-bid {
-         background: rgba(21, 128, 61, 0.4);
-      }
+      /* Theme-toggle icon — show sun in dark mode, moon in light mode. */
+      .theme-toggle .icon-sun  { display: none; }
+      .theme-toggle .icon-moon { display: inline; }
+      html.dark .theme-toggle .icon-sun  { display: inline; }
+      html.dark .theme-toggle .icon-moon { display: none; }
 
       @keyframes pulse-thin {
-
-         0%,
-         100% {
-            opacity: 1;
-         }
-
-         50% {
-            opacity: 0.5;
-         }
+         0%, 100% { opacity: 1; }
+         50%      { opacity: 0.5; }
       }
-
-      .animate-pulse-thin {
-         animation: pulse-thin 2s infinite;
-      }
+      .animate-pulse-thin { animation: pulse-thin 2s infinite; }
    </style>
 </head>
 
-<body class="bg-terminal-bg text-gray-400 font-mono min-h-screen selection:bg-terminal-cyan/30 text-[12px]">
+<body class="bg-terminal-bg text-fg font-mono min-h-screen selection:bg-terminal-cyan/30 text-[12px]">
    <!-- Top Status Bar -->
    <header
       class="h-8 bg-terminal-bg border-b border-terminal-border flex items-center justify-between px-4 text-[11px] font-bold">
       <div class="flex items-center gap-6">
          <div class="flex items-center gap-2">
             <span class="text-terminal-cyan">QUANT TERMINAL v2.7.1</span>
-            <span class="text-gray-600">|</span>
-            <span class="text-terminal-cyan">P99 LATENCY: <span id="stat-latency" class="text-white">-- μs</span></span>
+            <span class="text-fg-dim">|</span>
+            <span class="text-terminal-cyan">P99 LATENCY: <span id="stat-latency" class="text-fg">-- μs</span></span>
          </div>
-         <div class="text-terminal-cyan">THROUGHPUT: <span id="stat-throughput" class="text-white">-- orders/s</span>
+         <div class="text-terminal-cyan">THROUGHPUT: <span id="stat-throughput" class="text-fg">-- orders/s</span>
          </div>
       </div>
       <div class="flex items-center gap-6">
          <div class="flex items-center gap-4">
-            <span class="text-gray-600">CONNECTION:</span>
+            <span class="text-fg-dim">CONNECTION:</span>
             <div id="status-badge" class="flex items-center gap-2 text-terminal-red">
                <span class="w-2 h-2 bg-terminal-red rounded-full animate-pulse"></span>
                DISCONNECTED
             </div>
          </div>
-         <div id="terminal-clock" class="text-gray-500">2026-04-08 19:32:00</div>
+         <div id="terminal-clock" class="text-fg-mute">2026-04-08 19:32:00</div>
+         <button id="theme-toggle"
+            class="theme-toggle flex items-center justify-center w-6 h-6 text-fg-mute hover:text-terminal-cyan transition-colors"
+            aria-label="Toggle theme" title="Toggle light / dark">
+            <i class="ph-bold ph-sun icon-sun text-[13px]"></i>
+            <i class="ph-bold ph-moon icon-moon text-[13px]"></i>
+         </button>
       </div>
    </header>
 
@@ -133,7 +185,7 @@ AESTHETIC_DNA
          <div class="panel-header px-3 py-1">Order Book L2</div>
          <div class="flex flex-col flex-1 overflow-hidden">
             <!-- Table Headers -->
-            <div class="grid grid-cols-3 px-3 py-1 bg-black text-[9px] text-gray-500 border-b border-terminal-border">
+            <div class="grid grid-cols-3 px-3 py-1 bg-terminal-header text-[9px] text-fg-mute border-b border-terminal-border">
                <div class="text-left">PRICE</div>
                <div class="text-right">QTY</div>
                <div class="text-right">CUMULATIVE</div>
@@ -170,7 +222,7 @@ AESTHETIC_DNA
          <div class="h-1/3 flex flex-col overflow-hidden">
             <div class="panel-header px-3 py-1">Risk Engine Activity</div>
             <div id="risk-log" class="flex-1 p-3 overflow-y-auto no-scrollbar font-mono text-[11px] space-y-1">
-               <div class="text-gray-600 italic">Waiting for engine heartbeat...</div>
+               <div class="text-fg-dim italic">Waiting for engine heartbeat...</div>
             </div>
          </div>
       </section>
@@ -180,7 +232,7 @@ AESTHETIC_DNA
          <!-- Trade Tape -->
          <div class="flex-1 flex flex-col border-b border-terminal-border overflow-hidden">
             <div class="panel-header px-3 py-1">Trade Tape (Real-Time)</div>
-            <div class="grid grid-cols-4 px-3 py-1 bg-black text-[9px] text-gray-500 border-b border-terminal-border">
+            <div class="grid grid-cols-4 px-3 py-1 bg-terminal-header text-[9px] text-fg-mute border-b border-terminal-border">
                <div>TIMESTAMP</div>
                <div class="text-right">PRICE</div>
                <div class="text-right">QTY</div>
@@ -195,19 +247,19 @@ AESTHETIC_DNA
             <div class="p-4 grid grid-cols-1 gap-4">
                <div class="grid grid-cols-3 gap-2">
                   <div class="flex flex-col gap-1">
-                     <label class="text-[9px] text-gray-500 uppercase">Symbol</label>
+                     <label class="text-[9px] text-fg-mute uppercase">Symbol</label>
                      <input type="text" value="AAPL"
-                        class="bg-black border border-terminal-border text-white px-2 py-1 outline-none focus:border-terminal-cyan">
+                        class="bg-terminal-header border border-terminal-border text-fg px-2 py-1 outline-none focus:border-terminal-cyan">
                   </div>
                   <div class="flex flex-col gap-1">
-                     <label class="text-[9px] text-gray-500 uppercase">Price</label>
+                     <label class="text-[9px] text-fg-mute uppercase">Price</label>
                      <input type="text" id="order-price" value="150.25"
-                        class="bg-black border border-terminal-border text-white px-2 py-1 outline-none focus:border-terminal-cyan">
+                        class="bg-terminal-header border border-terminal-border text-fg px-2 py-1 outline-none focus:border-terminal-cyan">
                   </div>
                   <div class="flex flex-col gap-1">
-                     <label class="text-[9px] text-gray-500 uppercase">Qty</label>
+                     <label class="text-[9px] text-fg-mute uppercase">Qty</label>
                      <input type="text" id="order-qty" value="100"
-                        class="bg-black border border-terminal-border text-white px-2 py-1 outline-none focus:border-terminal-cyan">
+                        class="bg-terminal-header border border-terminal-border text-fg px-2 py-1 outline-none focus:border-terminal-cyan">
                   </div>
                </div>
                <div class="grid grid-cols-2 gap-3">
@@ -222,11 +274,11 @@ AESTHETIC_DNA
                </div>
                <div class="grid grid-cols-2 text-[10px]">
                   <div>
-                     <span class="text-gray-500">POSITION:</span>
+                     <span class="text-fg-mute">POSITION:</span>
                      <span class="text-terminal-green ml-2">+2,500</span>
                   </div>
                   <div class="text-right">
-                     <span class="text-gray-500">UNREALIZED P&L:</span>
+                     <span class="text-fg-mute">UNREALIZED P&L:</span>
                      <span class="text-terminal-green ml-2">+$20,375.00</span>
                   </div>
                </div>

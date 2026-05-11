@@ -28,6 +28,19 @@ class LOBTerminal {
 
     bindEvents() {
         window.placeOrder = (side) => this.handleOrderSubmit(side);
+
+        // Theme toggle. The `dark` class on <html> is set by the inline
+        // boot script in <head>; here we flip it, persist the choice, and
+        // re-theme the depth chart (Chart.js needs an explicit re-apply
+        // since its color props aren't bound to CSS vars).
+        const toggle = document.getElementById('theme-toggle');
+        if (toggle) {
+            toggle.addEventListener('click', () => {
+                const isDark = document.documentElement.classList.toggle('dark');
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                this.applyChartTheme();
+            });
+        }
     }
 
     startClock() {
@@ -109,8 +122,8 @@ class LOBTerminal {
                 <div class="grid grid-cols-3 px-3 py-[2px] relative group cursor-pointer hover:bg-white/5 data-row">
                     <div class="absolute left-0 h-full heatmap-ask transition-all duration-300" style="width: ${width}%"></div>
                     <div class="text-terminal-red font-bold z-10">${a.price.toFixed(2)}</div>
-                    <div class="text-right text-gray-300 z-10">${a.size.toLocaleString()}</div>
-                    <div class="text-right text-gray-500 z-10">${a.totalSize.toLocaleString()}</div>
+                    <div class="text-right text-fg z-10">${a.size.toLocaleString()}</div>
+                    <div class="text-right text-fg-mute z-10">${a.totalSize.toLocaleString()}</div>
                 </div>
             `;
         }).join('');
@@ -122,8 +135,8 @@ class LOBTerminal {
                 <div class="grid grid-cols-3 px-3 py-[2px] relative group cursor-pointer hover:bg-white/5 data-row">
                     <div class="absolute right-0 h-full heatmap-bid transition-all duration-300" style="width: ${width}%"></div>
                     <div class="text-terminal-green font-bold z-10">${b.price.toFixed(2)}</div>
-                    <div class="text-right text-gray-300 z-10">${b.size.toLocaleString()}</div>
-                    <div class="text-right text-gray-500 z-10">${b.totalSize.toLocaleString()}</div>
+                    <div class="text-right text-fg z-10">${b.size.toLocaleString()}</div>
+                    <div class="text-right text-fg-mute z-10">${b.totalSize.toLocaleString()}</div>
                 </div>
             `;
         }).join('');
@@ -146,9 +159,9 @@ class LOBTerminal {
         const colorClass = trade.side === 'BUY' ? 'text-terminal-green' : 'text-terminal-red';
         
         row.innerHTML = `
-            <div class="text-gray-600">${timestamp}</div>
+            <div class="text-fg-dim">${timestamp}</div>
             <div class="text-right ${colorClass} font-bold">${trade.price.toFixed(2)}</div>
-            <div class="text-right text-white">${trade.size}</div>
+            <div class="text-right text-fg">${trade.size}</div>
             <div class="text-right ${colorClass} font-black text-[9px] uppercase">${trade.side}</div>
         `;
 
@@ -174,9 +187,9 @@ class LOBTerminal {
         if (type === 'VERIFIED') tagClass = 'text-terminal-cyan';
 
         entry.innerHTML = `
-            <span class="text-gray-600">${timestamp}</span>
+            <span class="text-fg-dim">${timestamp}</span>
             <span class="${tagClass} font-bold ml-2">[${type}]</span>
-            <span class="text-gray-400 ml-2">${message}</span>
+            <span class="text-fg-mute ml-2">${message}</span>
         `;
         
         log.prepend(entry);
@@ -185,7 +198,24 @@ class LOBTerminal {
         }
     }
 
+    // Read theme-aware colors from CSS variables on <html>. Updated on
+    // every theme-toggle via applyChartTheme().
+    chartColors() {
+        const cs = getComputedStyle(document.documentElement);
+        const rgb = (v) => `rgb(${cs.getPropertyValue(v).trim()})`;
+        const rgba = (v, a) => `rgb(${cs.getPropertyValue(v).trim()} / ${a})`;
+        return {
+            green: rgb('--accent-green'),
+            greenFill: rgba('--accent-green', 0.2),
+            red: rgb('--accent-red'),
+            redFill: rgba('--accent-red', 0.2),
+            grid: rgb('--border'),
+            tick: rgb('--fg-mute'),
+        };
+    }
+
     initCharts() {
+        const c = this.chartColors();
         const ctx = document.getElementById('depthChart').getContext('2d');
         this.depthChart = new Chart(ctx, {
             type: 'line',
@@ -193,8 +223,8 @@ class LOBTerminal {
                 datasets: [
                     {
                         label: 'Bids',
-                        borderColor: '#00ff00',
-                        backgroundColor: 'rgba(0, 255, 0, 0.2)',
+                        borderColor: c.green,
+                        backgroundColor: c.greenFill,
                         fill: true,
                         stepped: true,
                         pointRadius: 0,
@@ -203,8 +233,8 @@ class LOBTerminal {
                     },
                     {
                         label: 'Asks',
-                        borderColor: '#ff0000',
-                        backgroundColor: 'rgba(255, 0, 0, 0.2)',
+                        borderColor: c.red,
+                        backgroundColor: c.redFill,
                         fill: true,
                         stepped: true,
                         pointRadius: 0,
@@ -220,13 +250,13 @@ class LOBTerminal {
                 scales: {
                     x: {
                         type: 'linear',
-                        grid: { color: '#111' },
-                        ticks: { color: '#666', font: { size: 9, family: 'IBM Plex Mono' } }
+                        grid: { color: c.grid },
+                        ticks: { color: c.tick, font: { size: 9, family: 'IBM Plex Mono' } }
                     },
                     y: {
                         position: 'right',
-                        grid: { color: '#111' },
-                        ticks: { color: '#666', font: { size: 9, family: 'IBM Plex Mono' } }
+                        grid: { color: c.grid },
+                        ticks: { color: c.tick, font: { size: 9, family: 'IBM Plex Mono' } }
                     }
                 },
                 plugins: {
@@ -234,6 +264,20 @@ class LOBTerminal {
                 }
             }
         });
+    }
+
+    // Apply current theme's colors to the existing chart in-place. Called
+    // from the theme toggle so we don't have to destroy/re-create the chart.
+    applyChartTheme() {
+        if (!this.depthChart) return;
+        const c = this.chartColors();
+        const ds = this.depthChart.data.datasets;
+        ds[0].borderColor = c.green; ds[0].backgroundColor = c.greenFill;
+        ds[1].borderColor = c.red;   ds[1].backgroundColor = c.redFill;
+        const sc = this.depthChart.options.scales;
+        sc.x.grid.color  = c.grid; sc.x.ticks.color  = c.tick;
+        sc.y.grid.color  = c.grid; sc.y.ticks.color  = c.tick;
+        this.depthChart.update('none');
     }
 
     renderDepth() {
