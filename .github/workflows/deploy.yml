@@ -97,13 +97,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Sanitize the platform string for filenames / artifact names:
-      # "linux/amd64" → "linux-amd64". Used below for both the GHA
-      # cache scope (so amd64 + arm64 builds don't fight over cache
-      # entries) and the digest-artifact name.
-      - name: Sanitize platform name
-        run: echo "PLATFORM_PAIR=${platform//\//-}" >> "$GITHUB_ENV"
+      # Two small env preps:
+      #   IMAGE_NAME_LC — Docker rejects mixed-case repo names, but
+      #     ${{ github.repository }} preserves owner casing
+      #     ("Builder106/ocaml_limit"). The old workflow leaned on
+      #     [docker/metadata-action] silently lowercasing its
+      #     [images:] input; the push-by-digest path doesn't go
+      #     through metadata-action, so do it here.
+      #   PLATFORM_PAIR — "linux/amd64" → "linux-amd64". Used as the
+      #     GHA cache scope (so amd64 + arm64 builds don't fight over
+      #     cache entries) and the digest-artifact name.
+      - name: Prep env
+        run: |
+          echo "IMAGE_NAME_LC=${IMAGE_NAME,,}" >> "$GITHUB_ENV"
+          echo "PLATFORM_PAIR=${platform//\//-}" >> "$GITHUB_ENV"
         env:
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
           platform: ${{ matrix.platform }}
 
       - name: Set up Docker Buildx
@@ -128,7 +137,7 @@ jobs:
         with:
           context: .
           platforms: ${{ matrix.platform }}
-          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=${{ env.PLATFORM_PAIR }}
           cache-to: type=gha,mode=max,scope=${{ env.PLATFORM_PAIR }}
           # See merge job below for why these stay off.
@@ -163,6 +172,15 @@ jobs:
       packages: write
 
     steps:
+      # Same lowercase prep as the build job — Docker rejects
+      # mixed-case repo names, and we reference the image directly
+      # in the manifest-create shell pipeline (which doesn't go
+      # through metadata-action's auto-lowercasing).
+      - name: Prep env
+        run: echo "IMAGE_NAME_LC=${IMAGE_NAME,,}" >> "$GITHUB_ENV"
+        env:
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
@@ -184,7 +202,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=sha-,format=short
@@ -201,12 +219,12 @@ jobs:
         run: |
           docker buildx imagetools create \
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }}@sha256:%s ' *)
 
       - name: Inspect resulting manifest
         run: |
           docker buildx imagetools inspect \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }}:${{ steps.meta.outputs.version }}
 
   deploy:
     needs: merge
