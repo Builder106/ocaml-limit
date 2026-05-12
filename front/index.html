@@ -430,6 +430,23 @@ AESTHETIC_DNA
       </div>
    </div>
 
+   <!-- Vercel Analytics + Speed Insights. Only loaded on the Vercel
+        deploy — the same files also serve from the Dream server on the
+        Oracle VM, where /_vercel/* would 404. The window.va / window.si
+        shims buffer auto-instrumentation events until the deferred
+        scripts execute. -->
+   <script>
+      if (location.hostname.endsWith('.vercel.app')) {
+         window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+         window.si = window.si || function () { (window.siq = window.siq || []).push(arguments); };
+         for (const path of ['/_vercel/insights/script.js', '/_vercel/speed-insights/script.js']) {
+            const s = document.createElement('script');
+            s.defer = true;
+            s.src = path;
+            document.head.appendChild(s);
+         }
+      }
+   </script>
    <script src="app.js"></script>
 </body>
 
