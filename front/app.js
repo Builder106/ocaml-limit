@@ -2,6 +2,13 @@
  * Bloomberg Terminal Edition - High-Performance Matching Engine
  */
 
+// When this page is served from the OCaml Dream server (Oracle VM),
+// /events and /order are same-origin. When served from Vercel, the
+// backend lives at a different origin and absolute URLs are needed.
+const API_BASE = location.hostname.endsWith('.vercel.app')
+    ? 'https://ocaml-lob.duckdns.org'
+    : '';
+
 class LOBTerminal {
     constructor() {
         this.es = null;
@@ -100,7 +107,7 @@ class LOBTerminal {
         // payloads; only the transport changes. EventSource auto-reconnects
         // on transport error, so we don't need the setTimeout from the
         // WS version.
-        this.es = new EventSource('/events');
+        this.es = new EventSource(`${API_BASE}/events`);
 
         this.es.onopen = () => {
             console.log('Terminal Link Established');
@@ -341,7 +348,7 @@ class LOBTerminal {
 
         this.addRiskLog('OK', `Placing ${side} order: ${size} @ ${price}`);
 
-        fetch('/order', {
+        fetch(`${API_BASE}/order`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ side, price, size })

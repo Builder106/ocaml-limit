@@ -192,6 +192,33 @@ let rec run_demo_bot engine =
     bot_step engine;
     run_demo_bot engine
 
+(** {2 CORS}
+
+    Permissive cross-origin headers on every response so the dashboard
+    can be served from a different origin (e.g. Vercel) and still hit
+    [/events] and [/order]. The endpoints are stateless and read no
+    cookies, so wildcard origin is safe — there is nothing for a
+    cross-site request to authenticate against.
+
+    The POST [/order] request carries [Content-Type: application/json],
+    which is not a "simple" content type, so the browser issues a
+    preflight [OPTIONS] before the POST. The match below answers that
+    preflight with the allowed methods and headers and a 24h cache. *)
+let cors_middleware (inner : Dream.handler) : Dream.handler =
+    fun request ->
+        match Dream.method_ request with
+        | `OPTIONS ->
+            Dream.respond ~headers:[
+                ("Access-Control-Allow-Origin",  "*");
+                ("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+                ("Access-Control-Allow-Headers", "Content-Type");
+                ("Access-Control-Max-Age",       "86400");
+            ] ""
+        | _ ->
+            let%lwt response = inner request in
+            Dream.set_header response "Access-Control-Allow-Origin" "*";
+            Lwt.return response
+
 (** {2 Server Logic} *)
 
 (* SIGUSR1 dumps the main thread's call stack + GC state to stderr
@@ -264,6 +291,7 @@ let () =
 
     Dream.run ~interface ~port
     @@ Dream.logger
+    @@ cors_middleware
     @@ Dream.router [
         (* Static Files *)
         Dream.get "/" (Dream.from_filesystem "." "front/index.html");

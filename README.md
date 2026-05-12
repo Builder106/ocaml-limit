@@ -16,11 +16,11 @@
 [![Playwright](https://img.shields.io/badge/Playwright-2EAD33?logo=playwright&logoColor=white)](https://playwright.dev/)
 [![Caddy](https://img.shields.io/badge/Caddy-1F88C0?logo=caddy&logoColor=white)](https://caddyserver.com/)
 [![Oracle Cloud](https://img.shields.io/badge/Oracle_Cloud-F80000?logo=oracle&logoColor=white)](https://www.oracle.com/cloud/)
-[![Demo](https://img.shields.io/badge/demo-live-success.svg)](https://ocaml-lob.duckdns.org/)
+[![Demo](https://img.shields.io/badge/demo-live-success.svg)](https://ocaml-lob.vercel.app/)
 
 A high-performance **limit-order-book matching engine in OCaml 5**, with a Dream HTTP + Server-Sent-Events server and a Bloomberg-terminal–styled browser dashboard. The matching hot path is **allocation-free per submit** (bench-validated), achieves **~18 M orders/sec** in the clean perf test, and holds **p99 latency under 1 μs**.
 
-🟢 **Live demo:** [ocaml-lob.duckdns.org](https://ocaml-lob.duckdns.org/) — public, free-tier VM. Click the (i) in the top right for an in-app tour.
+🟢 **Live demo:** [ocaml-lob.vercel.app](https://ocaml-lob.vercel.app/) — dashboard on Vercel, matching engine on a free-tier Oracle Cloud VM. Click the (i) in the top right for an in-app tour.
 
 ---
 
