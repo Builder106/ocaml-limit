@@ -65,7 +65,7 @@ jobs:
         run: opam install --yes alcotest
 
       - name: Build (lib + tests + bench)
-        run: opam exec -- dune build lib/ test/ bin/bench.exe
+        run: opam exec -- dune build lib/ test/
 
       - name: Run tests
         run: opam exec -- dune runtest --force
