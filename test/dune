@@ -1,3 +1,4 @@
 (tests
- (names test_engine perf_test)
+ (names test_engine perf_test test_internals)
  (libraries ocaml_lob alcotest unix))
+

@@ -3,4 +3,5 @@
  (public_name ocaml_lob)
  (libraries unix bigarray)
  (ocamlopt_flags
-  (:standard -O3 -unbox-closures)))
+  (:standard -O3 -unbox-closures))
+ (instrumentation (backend bisect_ppx)))

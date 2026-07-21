@@ -30,4 +30,6 @@
   (alcotest
    (and
     :with-test
-    (>= 1.7.0)))))
+    (>= 1.7.0)))
+  (bisect_ppx
+   :with-test)))

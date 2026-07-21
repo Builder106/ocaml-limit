@@ -224,6 +224,119 @@ let test_mpsc_multi_producer () =
 
 (* ────────────────────────────────────────────────────────────────────── *)
 
+
+(* ────────────────────────────────────────────────────────────────────── *)
+(*  Coverage Edge Cases                                                   *)
+(* ────────────────────────────────────────────────────────────────────── *)
+
+let test_rejections () =
+    let engine = Engine.create default_config in
+    let bad_price = limit ~id:1 ~side:Buy ~price:999_999_999 ~qty:10 in
+    let bad_qty = limit ~id:2 ~side:Buy ~price:100 ~qty:999_999_999 in
+    let pos_limit = limit ~id:3 ~side:Buy ~price:100 ~qty:9_999_999 in
+    
+    (* Force a huge position artificially *)
+    engine.risk.net_position <- 9_000_000;
+    
+    let res1 = Engine.submit engine bad_price noop_on_fill in
+    let res2 = Engine.submit engine bad_qty noop_on_fill in
+    let res3 = Engine.submit engine pos_limit noop_on_fill in
+    
+    Alcotest.(check bool) "reject price" true (match res1 with Error _ -> true | _ -> false);
+    Alcotest.(check bool) "reject qty" true (match res2 with Error _ -> true | _ -> false);
+    Alcotest.(check bool) "reject pos" true (match res3 with Error _ -> true | _ -> false);
+    
+    Alcotest.(check string) "status 1" "REJECTED" (Types.status_to_string bad_price.status);
+    Alcotest.(check string) "status 2" "REJECTED" (Types.status_to_string bad_qty.status);
+    Alcotest.(check string) "status 3" "REJECTED" (Types.status_to_string pos_limit.status)
+
+let test_cancel_edge_cases () =
+    let engine = Engine.create default_config in
+    let o1 = limit ~id:1 ~side:Buy ~price:100 ~qty:10 in
+    let o2 = limit ~id:2 ~side:Buy ~price:100 ~qty:10 in
+    let o3 = limit ~id:3 ~side:Buy ~price:100 ~qty:10 in
+    
+    let _ = Engine.submit engine o1 noop_on_fill in
+    let _ = Engine.submit engine o2 noop_on_fill in
+    let _ = Engine.submit engine o3 noop_on_fill in
+    
+    (* Cancel head (o1) *)
+    Alcotest.(check bool) "cancel head" true (Engine.cancel engine 1 100 Buy);
+    (* Cancel tail (o3) *)
+    Alcotest.(check bool) "cancel tail" true (Engine.cancel engine 3 100 Buy);
+    
+    (* Cancel non-existent at valid price *)
+    Alcotest.(check bool) "cancel missing" false (Engine.cancel engine 99 100 Buy);
+    
+    (* Cancel at non-existent price *)
+    Alcotest.(check bool) "cancel missing price" false (Engine.cancel engine 2 999 Buy);
+    
+    (* Cancel last remaining (o2), which becomes head and tail *)
+    Alcotest.(check bool) "cancel last" true (Engine.cancel engine 2 100 Buy)
+
+let test_iceberg_reload_behind_other () =
+    let engine = Engine.create default_config in
+    let ice = make_order ~id:1 ~side:Buy ~price:100 ~qty:10 ~order_type:(Iceberg { visible_qty = 10; total_qty = 90 }) ~timestamp:0 in
+    let lim = limit ~id:2 ~side:Buy ~price:100 ~qty:5 in
+    
+    let _ = Engine.submit engine ice noop_on_fill in
+    let _ = Engine.submit engine lim noop_on_fill in
+    
+    (* Match against the iceberg's visible part *)
+    let sell = limit ~id:3 ~side:Ask ~price:100 ~qty:10 in
+    let _ = Engine.submit engine sell noop_on_fill in
+    
+    (* Iceberg should have reloaded its next 10, but now sits BEHIND lim. *)
+    (* Next match of 5 should hit lim, not ice! *)
+    let (fills, cb) = make_fill_recorder () in
+    let sell2 = limit ~id:4 ~side:Ask ~price:100 ~qty:5 in
+    let _ = Engine.submit engine sell2 cb in
+    
+    match !fills with
+    | [(passive, _active, _, qty)] ->
+        Alcotest.(check int) "passive is lim" 2 passive;
+        Alcotest.(check int) "qty is 5" 5 qty
+    | _ -> Alcotest.fail "Expected exactly one fill against lim"
+
+let test_link_level_edge_cases () =
+    let engine = Engine.create default_config in
+    
+    (* Buy side: insert worst, then better, then best *)
+    let b1 = limit ~id:1 ~side:Buy ~price:80 ~qty:10 in
+    let b2 = limit ~id:2 ~side:Buy ~price:90 ~qty:10 in
+    let b3 = limit ~id:3 ~side:Buy ~price:100 ~qty:10 in
+    
+    let _ = Engine.submit engine b1 noop_on_fill in
+    let _ = Engine.submit engine b2 noop_on_fill in
+    let _ = Engine.submit engine b3 noop_on_fill in
+    
+    (* Buy side: insert in middle (between 90 and 80) *)
+    let b4 = limit ~id:4 ~side:Buy ~price:85 ~qty:10 in
+    let _ = Engine.submit engine b4 noop_on_fill in
+    
+    (* Ask side: insert worst, then better, then best *)
+    let a1 = limit ~id:5 ~side:Ask ~price:120 ~qty:10 in
+    let a2 = limit ~id:6 ~side:Ask ~price:110 ~qty:10 in
+    let a3 = limit ~id:7 ~side:Ask ~price:100 ~qty:10 in
+    
+    let _ = Engine.submit engine a1 noop_on_fill in
+    let _ = Engine.submit engine a2 noop_on_fill in
+    let _ = Engine.submit engine a3 noop_on_fill in
+    
+    (* Ask side: insert in middle (between 110 and 120) *)
+    let a4 = limit ~id:8 ~side:Ask ~price:115 ~qty:10 in
+    let _ = Engine.submit engine a4 noop_on_fill in
+    
+    (* Resubmit / replace tests: order with Active/Filled status *)
+    let replace_order = { b4 with price = 86; remaining_qty = 5 } in
+    let _ = Engine.submit engine replace_order noop_on_fill in
+    
+    let replace_best = { b3 with price = 105; remaining_qty = 5 } in
+    let _ = Engine.submit engine replace_best noop_on_fill in
+    
+    Alcotest.(check int) "done" 1 1
+
+
 let () =
     let open Alcotest in
     run "OCaml-LOB" [
@@ -236,7 +349,14 @@ let () =
             test_case "Level resurrection"      `Quick test_resurrection;
         ];
         "messaging", [
-            test_case "MPSC FIFO (1 producer)"   `Quick test_mpsc_single_producer;
-            test_case "MPSC FIFO (4 domains)"    `Quick test_mpsc_multi_producer;
+            test_case "MPSC FIFO (1 producer)" `Quick test_mpsc_single_producer;
+            test_case "MPSC FIFO (4 domains)" `Quick test_mpsc_multi_producer;
         ];
+        "edge_cases", [
+            test_case "Rejections" `Quick test_rejections;
+            test_case "Cancel edge cases" `Quick test_cancel_edge_cases;
+            test_case "Iceberg reload behind" `Quick test_iceberg_reload_behind_other;
+            test_case "Link level edge cases" `Quick test_link_level_edge_cases;
+        ]
+
     ]

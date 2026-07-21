@@ -1,0 +1,235 @@
+<?xml version="1.0" ?>
+<coverage lines-valid="195" lines-covered="176" line-rate="0.902564">
+  <sources>
+    <source>.</source>
+  </sources>
+  <packages>
+    <package name="." line-rate="0.902564">
+      <classes>
+        <class name="lib/pool.ml" filename="lib/pool.ml" line-rate="1.000000">
+          <lines>
+            <line number="52" hits="11"/>
+            <line number="54" hits="11"/>
+            <line number="55" hits="9000012"/>
+            <line number="61" hits="9000012"/>
+            <line number="62" hits="11"/>
+            <line number="70" hits="153019"/>
+            <line number="71" hits="1"/>
+            <line number="72" hits="153018"/>
+            <line number="74" hits="153018"/>
+            <line number="77" hits="153018"/>
+            <line number="87" hits="147011"/>
+            <line number="89" hits="147011"/>
+            <line number="92" hits="147011"/>
+            <line number="98" hits="159008"/>
+            <line number="103" hits="1"/>
+            <line number="106" hits="1"/>
+          </lines>
+        </class>
+        <class name="lib/risk.ml" filename="lib/risk.ml" line-rate="1.000000">
+          <lines>
+            <line number="35" hits="9"/>
+            <line number="46" hits="1"/>
+            <line number="47" hits="3"/>
+            <line number="49" hits="300025"/>
+            <line number="56" hits="300027"/>
+            <line number="57" hits="2"/>
+            <line number="59" hits="300025"/>
+            <line number="71" hits="300027"/>
+            <line number="72" hits="150014"/>
+            <line number="73" hits="150013"/>
+            <line number="75" hits="300027"/>
+            <line number="76" hits="3"/>
+            <line number="78" hits="300024"/>
+            <line number="85" hits="147011"/>
+            <line number="86" hits="147003"/>
+            <line number="87" hits="8"/>
+            <line number="98" hits="300026"/>
+            <line number="99" hits="1"/>
+            <line number="100" hits="300025"/>
+            <line number="102" hits="1"/>
+            <line number="103" hits="300024"/>
+            <line number="108" hits="1"/>
+            <line number="109" hits="1"/>
+            <line number="110" hits="1"/>
+            <line number="111" hits="1"/>
+          </lines>
+        </class>
+        <class name="lib/price_index.ml" filename="lib/price_index.ml" line-rate="1.000000">
+          <lines>
+            <line number="51" hits="20"/>
+            <line number="53" hits="20"/>
+            <line number="54" hits="20"/>
+            <line number="55" hits="20"/>
+            <line number="62" hits="153215"/>
+            <line number="69" hits="1"/>
+            <line number="71" hits="153045"/>
+            <line number="72" hits="152852"/>
+            <line number="73" hits="165"/>
+            <line number="74" hits="28"/>
+            <line number="77" hits="153018"/>
+            <line number="80" hits="213"/>
+            <line number="81" hits="1"/>
+            <line number="83" hits="212"/>
+            <line number="84" hits="195"/>
+            <line number="86" hits="195"/>
+            <line number="88" hits="17"/>
+            <line number="89" hits="1"/>
+            <line number="91" hits="16"/>
+            <line number="95" hits="197"/>
+          </lines>
+        </class>
+        <class name="lib/types.ml" filename="lib/types.ml" line-rate="1.000000">
+          <lines>
+            <line number="208" hits="300022"/>
+            <line number="213" hits="1"/>
+            <line number="217" hits="1"/>
+            <line number="221" hits="1"/>
+            <line number="222" hits="1"/>
+            <line number="226" hits="1"/>
+            <line number="227" hits="1"/>
+            <line number="231" hits="1"/>
+            <line number="232" hits="1"/>
+            <line number="233" hits="1"/>
+            <line number="234" hits="1"/>
+          </lines>
+        </class>
+        <class name="lib/messaging.ml" filename="lib/messaging.ml" line-rate="0.823529">
+          <lines>
+            <line number="17" hits="3"/>
+            <line number="18" hits="3"/>
+            <line number="21" hits="1102"/>
+            <line number="23" hits="1102"/>
+            <line number="24" hits="1102"/>
+            <line number="25" hits="0"/>
+            <line number="26" hits="1102"/>
+            <line number="28" hits="1102"/>
+            <line number="30" hits="0"/>
+            <line number="35" hits="1106"/>
+            <line number="36" hits="1106"/>
+            <line number="37" hits="0"/>
+            <line number="38" hits="1106"/>
+            <line number="40" hits="1106"/>
+            <line number="41" hits="4"/>
+            <line number="42" hits="1102"/>
+            <line number="44" hits="1102"/>
+          </lines>
+        </class>
+        <class name="lib/engine.ml" filename="lib/engine.ml" line-rate="0.822222">
+          <lines>
+            <line number="54" hits="9"/>
+            <line number="55" hits="9"/>
+            <line number="56" hits="18"/>
+            <line number="60" hits="9"/>
+            <line number="61" hits="9"/>
+            <line number="65" hits="9"/>
+            <line number="74" hits="151"/>
+            <line number="75" hits="150"/>
+            <line number="77" hits="1"/>
+            <line number="79" hits="0"/>
+            <line number="80" hits="1"/>
+            <line number="82" hits="0"/>
+            <line number="89" hits="163"/>
+            <line number="90" hits="13"/>
+            <line number="95" hits="150"/>
+            <line number="97" hits="1"/>
+            <line number="98" hits="149"/>
+            <line number="100" hits="0"/>
+            <line number="105" hits="150"/>
+            <line number="107" hits="150"/>
+            <line number="112" hits="0"/>
+            <line number="120" hits="153013"/>
+            <line number="121" hits="152850"/>
+            <line number="122" hits="163"/>
+            <line number="133" hits="163"/>
+            <line number="134" hits="163"/>
+            <line number="150" hits="147008"/>
+            <line number="151" hits="16"/>
+            <line number="153" hits="444012"/>
+            <line number="156" hits="150010"/>
+            <line number="159" hits="152997"/>
+            <line number="161" hits="291015"/>
+            <line number="163" hits="144004"/>
+            <line number="176" hits="147011"/>
+            <line number="177" hits="147011"/>
+            <line number="180" hits="147011"/>
+            <line number="186" hits="147011"/>
+            <line number="188" hits="147010"/>
+            <line number="191" hits="147009"/>
+            <line number="192" hits="1"/>
+            <line number="196" hits="147010"/>
+            <line number="197" hits="3"/>
+            <line number="199" hits="2"/>
+            <line number="201" hits="2"/>
+            <line number="210" hits="2"/>
+            <line number="211" hits="2"/>
+            <line number="214" hits="0"/>
+            <line number="216" hits="0"/>
+            <line number="217" hits="0"/>
+            <line number="222" hits="1"/>
+            <line number="223" hits="147007"/>
+            <line number="224" hits="1"/>
+            <line number="228" hits="150009"/>
+            <line number="234" hits="300022"/>
+            <line number="235" hits="0"/>
+            <line number="238" hits="0"/>
+            <line number="241" hits="0"/>
+            <line number="244" hits="300022"/>
+            <line number="245" hits="150010"/>
+            <line number="248" hits="15"/>
+            <line number="250" hits="300007"/>
+            <line number="251" hits="149999"/>
+            <line number="254" hits="1"/>
+            <line number="257" hits="300021"/>
+            <line number="259" hits="153013"/>
+            <line number="260" hits="3008"/>
+            <line number="262" hits="153013"/>
+            <line number="264" hits="153013"/>
+            <line number="271" hits="147017"/>
+            <line number="274" hits="5996"/>
+            <line number="276" hits="5996"/>
+            <line number="277" hits="5996"/>
+            <line number="287" hits="147017"/>
+            <line number="290" hits="0"/>
+            <line number="292" hits="9"/>
+            <line number="293" hits="2998"/>
+            <line number="295" hits="2998"/>
+            <line number="297" hits="147008"/>
+            <line number="304" hits="0"/>
+            <line number="306" hits="0"/>
+            <line number="307" hits="1"/>
+            <line number="311" hits="0"/>
+            <line number="313" hits="2"/>
+            <line number="314" hits="1"/>
+            <line number="318" hits="1"/>
+            <line number="319" hits="0"/>
+            <line number="321" hits="1"/>
+            <line number="322" hits="0"/>
+            <line number="328" hits="1"/>
+            <line number="329" hits="1"/>
+          </lines>
+        </class>
+        <class name="lib/stats.ml" filename="lib/stats.ml" line-rate="1.000000">
+          <lines>
+            <line number="13" hits="2"/>
+            <line number="15" hits="2"/>
+            <line number="16" hits="2"/>
+            <line number="21" hits="100002"/>
+            <line number="22" hits="100002"/>
+            <line number="24" hits="100002"/>
+            <line number="28" hits="1"/>
+            <line number="30" hits="2"/>
+            <line number="31" hits="2"/>
+            <line number="32" hits="2"/>
+            <line number="33" hits="2"/>
+            <line number="36" hits="2"/>
+            <line number="37" hits="1"/>
+            <line number="38" hits="1"/>
+            <line number="41" hits="1"/>
+            <line number="42" hits="1"/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>
