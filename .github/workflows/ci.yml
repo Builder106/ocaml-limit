@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: OCaml unit & perf regression tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: '5.2'
+          opam-pin: false
+
+      - name: Install test deps
+        run: opam install --yes alcotest
+
+      - name: Build (lib + tests + bench)
+        run: opam exec -- dune build lib/ test/
+
+      - name: Run tests
+        run: opam exec -- dune runtest --force

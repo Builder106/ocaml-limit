@@ -49,7 +49,7 @@ jobs:
     # anything ships. ~3-5 min cache-warm; ~6-8 min on first run.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up OCaml
         uses: ocaml/setup-ocaml@v3
