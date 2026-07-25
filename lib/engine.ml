@@ -228,6 +228,17 @@ let[@inline] match_aggressive engine order on_fill =
   let opposite_book = if order.side = Buy then engine.book.asks else engine.book.bids in
   fill_loop engine order on_fill opposite_book
 
+let rec count_available_liquidity order_side order_price level =
+  if level == sentinel_level then 0
+  else
+    let can_match =
+      match order_side with
+      | Buy -> order_price >= level.pl_price
+      | Ask -> order_price <= level.pl_price
+    in
+    if not can_match then 0
+    else level.pl_total_qty + count_available_liquidity order_side order_price level.pl_next_level
+
 (** {2 Public API} *)
 
 let submit engine order on_fill =
@@ -254,6 +265,20 @@ let submit engine order on_fill =
       if order.order_type = Post_only && would_match then (
         order.status <- Rejected;
         r_reject_price_band)
+      else if order.order_type = FOK then (
+        let avail = count_available_liquidity order.side order.price opposite_book.best_level in
+        if avail < order.remaining_qty then (
+          order.status <- Rejected;
+          r_ok)
+        else (
+          match_aggressive engine order on_fill;
+          if order.status = Active then order.status <- Filled;
+          r_ok))
+      else if order.order_type = IOC then (
+        match_aggressive engine order on_fill;
+        if order.remaining_qty > 0 then order.status <- Cancelled
+        else if order.status = Active then order.status <- Filled;
+        r_ok)
       else (
         match_aggressive engine order on_fill;
         if order.remaining_qty > 0 then (

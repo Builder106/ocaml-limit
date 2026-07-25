@@ -26,7 +26,7 @@ A high-performance **limit-order-book matching engine in OCaml 5**, with a Dream
 
 ## What is this?
 
-A working approximation of an exchange-grade matching engine, built for performance learning + a recruiter-facing portfolio piece. The engine implements price-time priority matching with iceberg orders, post-only rejection, and pre-trade risk gates; the front-end visualizes a live book updating in real time.
+A working approximation of an exchange-grade matching engine, built for performance learning + a recruiter-facing portfolio piece. The engine implements price-time priority matching with iceberg orders, post-only rejection, IOC (Immediate-Or-Cancel), FOK (Fill-Or-Kill), and pre-trade risk gates; the front-end visualizes a live book updating in real time.
 
 The API is small enough to fit on a postcard:
 

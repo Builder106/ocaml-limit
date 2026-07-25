@@ -337,6 +337,39 @@ let test_link_level_edge_cases () =
     Alcotest.(check int) "done" 1 1
 
 
+let test_ioc_order () =
+    let engine = Engine.create default_config in
+    ignore (Engine.submit engine (limit ~id:1 ~side:Ask ~price:100 ~qty:10) noop_on_fill);
+    
+    (* IOC buy for 25: 10 matches at 100, remaining 15 is cancelled, NOT placed on book *)
+    let ioc = make_order ~id:2 ~side:Buy ~price:100 ~qty:25 ~order_type:IOC ~timestamp:0 in
+    let (fills, cb) = make_fill_recorder () in
+    ignore (Engine.submit engine ioc cb);
+    
+    Alcotest.(check int) "1 fill for IOC" 1 (List.length !fills);
+    Alcotest.(check bool) "IOC remaining cancelled" true (ioc.status = Cancelled);
+    Alcotest.(check int) "Bid book is empty" (-1) engine.book.bids.best_level.pl_head
+
+let test_fok_order () =
+    let engine = Engine.create default_config in
+    ignore (Engine.submit engine (limit ~id:1 ~side:Ask ~price:100 ~qty:10) noop_on_fill);
+    
+    (* FOK buy for 25 when only 10 available -> killed/rejected immediately, 0 fills *)
+    let fok_fail = make_order ~id:2 ~side:Buy ~price:100 ~qty:25 ~order_type:FOK ~timestamp:0 in
+    let (fills_fail, cb_fail) = make_fill_recorder () in
+    ignore (Engine.submit engine fok_fail cb_fail);
+    
+    Alcotest.(check int) "0 fills on FOK fail" 0 (List.length !fills_fail);
+    Alcotest.(check bool) "FOK status rejected" true (fok_fail.status = Rejected);
+    
+    (* FOK buy for 10 when 10 available -> fully filled *)
+    let fok_pass = make_order ~id:3 ~side:Buy ~price:100 ~qty:10 ~order_type:FOK ~timestamp:0 in
+    let (fills_pass, cb_pass) = make_fill_recorder () in
+    ignore (Engine.submit engine fok_pass cb_pass);
+    
+    Alcotest.(check int) "1 fill on FOK pass" 1 (List.length !fills_pass);
+    Alcotest.(check bool) "FOK status filled" true (fok_pass.status = Filled)
+
 let () =
     let open Alcotest in
     run "OCaml-LOB" [
@@ -344,6 +377,8 @@ let () =
             test_case "Basic matching"          `Quick test_basic_matching;
             test_case "Iceberg reload"          `Quick test_iceberg_reload;
             test_case "Post-only rejection"     `Quick test_post_only_rejection;
+            test_case "IOC order execution"     `Quick test_ioc_order;
+            test_case "FOK order execution"     `Quick test_fok_order;
             test_case "Cancel preserves FIFO"   `Quick test_cancel_preserves_fifo;
             test_case "Sweep across levels"     `Quick test_sweep_across_levels;
             test_case "Level resurrection"      `Quick test_resurrection;

@@ -47,6 +47,14 @@ type order_type =
       (** Post-only (maker-only): the order is rejected if it would
           immediately match against resting liquidity. Used by market makers
           to guarantee rebate capture and avoid taker fees. *)
+  | IOC
+      (** Immediate-Or-Cancel: fill as much as possible immediately, cancel the rest. *)
+  | FOK
+      (** Fill-Or-Kill: fill the entire order quantity immediately or cancel it completely. *)
+  | Stop_loss of { stop_price : price }
+      (** Stop-Loss: triggers when market price crosses stop_price. *)
+  | Stop_limit of { stop_price : price; limit_price : price }
+      (** Stop-Limit: triggers limit order when market price crosses stop_price. *)
 
 (** {2 Order Record}
 
