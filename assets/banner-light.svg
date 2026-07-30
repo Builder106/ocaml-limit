@@ -81,7 +81,7 @@ Render with:
 
   <!-- Footer URLs. -->
   <text x="80" y="390" fill="#6b7280" font-size="15" font-weight="500">
-    github.com/Builder106/ocaml_limit
+    github.com/Builder106/ocaml-limit
   </text>
   <text x="1120" y="390" text-anchor="end" fill="#6b7280" font-size="15" font-weight="500">
     ocaml-lob.duckdns.org

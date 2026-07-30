@@ -6,7 +6,7 @@
 
 # OCaml LOB
 
-[![CI](https://github.com/Builder106/ocaml_limit/actions/workflows/deploy.yml/badge.svg)](https://github.com/Builder106/ocaml_limit/actions/workflows/deploy.yml)
+[![CI](https://github.com/Builder106/ocaml-limit/actions/workflows/deploy.yml/badge.svg)](https://github.com/Builder106/ocaml-limit/actions/workflows/deploy.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](#license)
 [![OCaml](https://img.shields.io/badge/OCaml-5.2%2B-EC6813?logo=ocaml&logoColor=white)](https://ocaml.org/)
 [![Dream](https://img.shields.io/badge/Dream-1F8AAB?logo=ocaml&logoColor=white)](https://aantron.github.io/dream/)

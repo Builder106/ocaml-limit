@@ -78,7 +78,7 @@ Used by:
 
   <!-- Footer URLs. -->
   <text x="80"   y="585" fill="#9ca3af" font-size="18" font-weight="500">
-    github.com/Builder106/ocaml_limit
+    github.com/Builder106/ocaml-limit
   </text>
   <text x="1120" y="585" text-anchor="end" fill="#9ca3af" font-size="18" font-weight="500">
     ocaml-lob.duckdns.org

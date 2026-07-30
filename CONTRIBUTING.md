@@ -52,7 +52,7 @@ Common allocation sources to watch for:
 - Result records — pre-allocate them as module-level constants (`r_ok`, `r_reject_*` in [lib/engine.ml](lib/engine.ml)).
 - Iteration over `PriceMap`/`Map` rebuilds tree spine on `remove`. Use the doubly-linked level list with lazy-keep instead.
 
-Read [memory/engine_allocation_profile.md](https://github.com/Builder106/ocaml_limit) (project-internal note) or grep for "lazy-keep" / "intrusive DLL" in the engine source for the full story.
+Read [memory/engine_allocation_profile.md](https://github.com/Builder106/ocaml-limit) (project-internal note) or grep for "lazy-keep" / "intrusive DLL" in the engine source for the full story.
 
 ### Use `Gc.minor_words`, not `Gc.stat`
 
