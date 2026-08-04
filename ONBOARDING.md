@@ -2,7 +2,7 @@
 
 A high-performance limit order book matching engine in OCaml 5, with a Dream WebSocket server and Bloomberg-terminal–styled browser dashboard. **Zero-allocation per submit** (verified — bench prints `[STUNNING] ZERO-ALLOCATION CLAIM VALIDATED`), ~18 M orders/s in the clean perf test, p99 latency ~1 μs.
 
-**Live demo:** https://ocaml-lob.duckdns.org/
+**Live demo:** <https://ocaml-lob.duckdns.org/>
 
 ---
 
@@ -56,7 +56,7 @@ The dashboard is at `http://localhost:8080/`. The demo bot starts automatically;
 `dune runtest` enforces three regression guards in [test/perf_test.ml](test/perf_test.ml):
 
 | Guard | Threshold | Why |
-|---|---|---|
+| --- | --- | --- |
 | `bytes_per_order_ceiling` | ≤ 0.20 bytes/order | Hot path is allocation-free; this catches any new allocation regressing per-submit work. Measured via `Gc.minor_words`, not `minor_collections` — the latter is contaminated by `Gc.stat`'s own allocation. |
 | `throughput_floor_mops` | ≥ 0.5 M orders/s | CI-safe floor; engine routinely does 10×+ this. |
 | `p99_ceiling_us` | ≤ 100 μs | Engine is sub-μs in practice; the ceiling absorbs `gettimeofday` measurement noise. |
@@ -78,7 +78,7 @@ The path through `Engine.submit` doesn't allocate. Six layered fixes got it ther
 
 ## Deployment
 
-Live at https://ocaml-lob.duckdns.org/ on an Oracle Cloud Always-Free E2.1.Micro in `us-phoenix-1`. Caddy fronts the container with auto-renewing Let's Encrypt TLS. Auto-deploy on push to `main` via [.github/workflows/deploy.yml](.github/workflows/deploy.yml): builds the linux/amd64 image with GHA layer cache, pushes to GHCR, SSHs into the VM to pull and restart.
+Live at <https://ocaml-lob.duckdns.org/> on an Oracle Cloud Always-Free E2.1.Micro in `us-phoenix-1`. Caddy fronts the container with auto-renewing Let's Encrypt TLS. Auto-deploy on push to `main` via [.github/workflows/deploy.yml](.github/workflows/deploy.yml): builds the linux/amd64 image with GHA layer cache, pushes to GHCR, SSHs into the VM to pull and restart.
 
 For first-time setup or rebuilding the VM, see [DEPLOY.md](DEPLOY.md). For the resource OCIDs and cleanup commands, see the memory entry `oracle_deployment.md`.
 

@@ -56,7 +56,7 @@ once those files exist, GitHub renders them inline.
 All overridable as env vars:
 
 | Var | Default | What it controls |
-|---|---|---|
+| --- | --- | --- |
 | `DEMO` | `0` (set to `1` by the `demo` script) | Master switch — fixtures no-op when unset |
 | `DEMO_URL` | `https://ocaml-lob.duckdns.org/` | Target |
 | `DEMO_SLOWMO` | `1200` | Per-action pause (ms) |

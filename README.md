@@ -191,7 +191,7 @@ flowchart LR
 Two Alcotest files under [test/](test/), 11 cases total. Runs in well under a second.
 
 | Group | Test | What it pins |
-|---|---|---|
+| --- | --- | --- |
 | `matching` | Basic matching | Same-price Buy/Ask filling each other |
 | `matching` | Iceberg reload | Visible-portion exhausts, hidden portion reloads at the queue tail; total qty conserved |
 | `matching` | Post-only rejection | Crossing post-only returns `Reject_price_band` |
