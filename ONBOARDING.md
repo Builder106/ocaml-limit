@@ -8,7 +8,7 @@ A high-performance limit order book matching engine in OCaml 5, with a Dream Web
 
 ## 5-minute orientation
 
-```
+```text
 ocaml_lob/
 ├── lib/                         # the engine (all perf-sensitive code)
 │   ├── types.ml                 # price_level, book_side, sentinel_level

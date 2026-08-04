@@ -210,7 +210,7 @@ The two matching cases that originally surfaced as test failures (`Sweep across 
 
 ## Project layout
 
-```
+```text
 ocaml_lob/
 ├── lib/                           engine + types + custom data structures
 │   ├── types.ml                   price_level, book_side, sentinel_level

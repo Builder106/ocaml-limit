@@ -6,7 +6,7 @@ under collapsed `<details>` sections.
 
 ## What's here
 
-```
+```text
 e2e/
 ├── playwright.demo.config.ts   demo-mode config (slowMo, video on)
 ├── reporter/demo-reporter.ts   webm → mp4, skips warmups + 0-byte files
