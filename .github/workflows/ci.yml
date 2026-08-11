@@ -25,11 +25,17 @@ jobs:
           GITLEAKS_NOTIFY_USER_LIST: ""
 
   test:
-    name: OCaml unit & perf regression tests
-    runs-on: ubuntu-latest
+    name: OCaml unit & perf regression tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
 
+      # ocaml/setup-ocaml handles the Windows case itself (opam's Cygwin
+      # backend on that platform) — no extra per-OS steps needed here.
       - name: Set up OCaml
         uses: ocaml/setup-ocaml@v3
         with:
