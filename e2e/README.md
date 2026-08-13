@@ -24,7 +24,7 @@ npm install
 npm run install:browsers     # downloads Playwright's Chromium build
 ```
 
-You'll also need `ffmpeg` on `PATH` (the reporter shells out to it for
+You'll also need `ffmpeg`on`PATH` (the reporter shells out to it for
 the webm → mp4 step). `brew install ffmpeg` on macOS.
 
 ## Recording
@@ -48,7 +48,7 @@ Then:
 npm run gifs                   # mp4 → assets/demos/*.gif
 ```
 
-The README's `<details>` blocks reference `assets/demos/*.gif` —
+The README's `<details>`blocks reference`assets/demos/*.gif` —
 once those files exist, GitHub renders them inline.
 
 ## Tuning knobs
@@ -57,19 +57,19 @@ All overridable as env vars:
 
 | Var | Default | What it controls |
 | --- | --- | --- |
-| `DEMO` | `0` (set to `1` by the `demo` script) | Master switch — fixtures no-op when unset |
+| `DEMO` | `0`(set to`1`by the`demo` script) | Master switch — fixtures no-op when unset |
 | `DEMO_URL` | `https://ocaml-lob.duckdns.org/` | Target |
 | `DEMO_SLOWMO` | `1200` | Per-action pause (ms) |
-| `DEMO_TYPE_DELAY` | `70` | Per-character delay in `animatedFill` |
+| `DEMO_TYPE_DELAY` | `70` | Per-character delay in`animatedFill` |
 | `DEMO_TAIL_MS` | `1500` | Hold-final-frame at end of each scenario |
-| `DEMO_DWELL_MS` | `1500` | Default `dwellForDemo()` duration |
+| `DEMO_DWELL_MS` | `1500` | Default`dwellForDemo()` duration |
 
 Bump `DEMO_SLOWMO` for slower / more readable demos; drop it for
 faster iteration when iterating on step definitions.
 
 ## Warmups
 
-`00-warmup-a.feature` and `00-warmup-b.feature` exist only to absorb
+`00-warmup-a.feature`and`00-warmup-b.feature` exist only to absorb
 Playwright's "0-byte first-test video" bug under single-worker +
 slowMo + `video: 'on'`. The reporter discards anything whose slug
 prefix is `00-warmup-`; don't add real assertions to them.
@@ -77,13 +77,20 @@ prefix is `00-warmup-`; don't add real assertions to them.
 ## Adding a new demo
 
 1. Create `demo/features/0N-<cluster>.feature` (one scenario per
+
    feature, narrative-style steps).
+
 2. Reuse existing steps if possible — the step library is shared.
+
    New step phrases go in `steps/<cluster>.steps.ts`.
-3. `npm run demo` regenerates everything; `npm run gifs` rebuilds
+
+3. `npm run demo`regenerates everything;`npm run gifs` rebuilds
+
    the GIFs. Commit the GIFs (they're a few hundred KB each at the
    default 960px / 10 fps).
+
 4. Add a `<details>` block to the root README pointing at the new
+
    GIF path.
 
 ## Steps-as-narration

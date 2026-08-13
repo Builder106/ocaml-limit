@@ -18,13 +18,13 @@
 [![Oracle Cloud](https://img.shields.io/badge/Oracle_Cloud-F80000?logo=oracle&logoColor=white)](https://www.oracle.com/cloud/)
 [![Demo](https://img.shields.io/badge/demo-live-success.svg)](https://ocaml-lob.vercel.app/)
 
-A high-performance **limit-order-book matching engine in OCaml 5**, with a Dream HTTP + Server-Sent-Events server and a Bloomberg-terminal–styled browser dashboard. The matching hot path is **allocation-free per submit** (bench-validated), achieves **~18 M orders/sec** in the clean perf test, and holds **p99 latency under 1 μs**.
+A high-performance **limit-order-book matching engine in OCaml 5**, with a Dream HTTP + Server-Sent-Events server and a Bloomberg-terminal–styled browser dashboard. The matching hot path is **allocation-free per submit**(bench-validated), achieves**~18 M orders/sec**in the clean perf test, and holds**p99 latency under 1 μs**.
 
 🟢 **Live demo:** [ocaml-lob.vercel.app](https://ocaml-lob.vercel.app/) — dashboard on Vercel, matching engine on a free-tier Oracle Cloud VM. Click the (i) in the top right for an in-app tour.
 
 ---
 
-## What is this?
+## What is this
 
 A working approximation of an exchange-grade matching engine, built for performance learning + a recruiter-facing portfolio piece. The engine implements price-time priority matching with iceberg orders, post-only rejection, IOC (Immediate-Or-Cancel), FOK (Fill-Or-Kill), and pre-trade risk gates; the front-end visualizes a live book updating in real time.
 
@@ -42,14 +42,14 @@ match Engine.submit engine order (fun passive_id active_id price qty _ts ->
         Printf.printf "fill: %d×%d @ %d (passive=%d active=%d)\n"
           qty 1 price passive_id active_id)
 with
-| Ok ()   -> () (* order accepted *)
-| Error _ -> () (* pre-trade risk rejected *)
+| Ok ()   -> () (*order accepted*)
+| Error _ -> () (*pre-trade risk rejected*)
 ```
 
 Six layered optimizations got the hot path from ~16 bytes/order down to **0.0033 bytes/order**:
 
 1. Pre-allocated result-wrapper constants (no `Ok ()` boxing per submit)
-2. `PriceMap.find` + `exception Not_found` instead of `find_opt` (no `Some` boxing)
+2. `PriceMap.find`+`exception Not_found`instead of`find_opt`(no`Some` boxing)
 3. Top-level `fill_loop` (no per-submit closure allocation)
 4. Intrusive doubly-linked list of price levels (no `max_binding_opt` tuple boxing)
 5. Lazy-keep on level exhaustion + resurrection promotion (no `PriceMap.remove` tree-spine rebuild)
@@ -141,7 +141,7 @@ Auto-opens on first visit with the headline numbers and a panel-by-panel guide. 
 
 </details>
 
-> **For maintainers:** recording flow — `npm --prefix e2e run demo` records mp4s at 1440×900 into `e2e/demo-output/`, then `npm --prefix e2e run gifs` converts them to 1280px-wide GIFs in `assets/demos/`. Every feature has a `-light` and `-dark` variant; the README embeds them via `<picture media="(prefers-color-scheme: dark)">` so the active gif follows the reader's browser theme. Recorded close to the README's display resolution so the GIFs are crisp on Retina without blowing GitHub's 10 MB inline-image cap.
+> **For maintainers:** recording flow — `npm --prefix e2e run demo`records mp4s at 1440×900 into`e2e/demo-output/`, then `npm --prefix e2e run gifs`converts them to 1280px-wide GIFs in`assets/demos/`. Every feature has a `-light`and`-dark`variant; the README embeds them via`<picture media="(prefers-color-scheme: dark)">` so the active gif follows the reader's browser theme. Recorded close to the README's display resolution so the GIFs are crisp on Retina without blowing GitHub's 10 MB inline-image cap.
 
 ---
 
@@ -180,7 +180,7 @@ flowchart LR
 
 **Sequential gating**: the build job has `needs: test`, so a single Alcotest failure prevents the image from being built — let alone pushed or deployed. The deploy job has `needs: build-and-push`, so an image that fails to build never reaches the VM. Concurrency-gated (`group: deploy-prod`) so two simultaneous pushes can't race on the host.
 
-**Caching**: `ocaml/setup-ocaml@v3` caches the opam switch (~2 min cache-warm vs ~8 min cold). Docker layers cache via `cache-from: type=gha`, so source-only changes rebuild the image in ~1.5 min.
+**Caching**: `ocaml/setup-ocaml@v3`caches the opam switch (~2 min cache-warm vs ~8 min cold). Docker layers cache via`cache-from: type=gha`, so source-only changes rebuild the image in ~1.5 min.
 
 **Secrets** (`SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY`) are resolved at workflow start time and used by `appleboy/ssh-action` to reach the VM. Setup walkthrough in DEPLOY.md.
 
@@ -194,17 +194,17 @@ Two Alcotest files under [test/](test/), 11 cases total. Runs in well under a se
 | --- | --- | --- |
 | `matching` | Basic matching | Same-price Buy/Ask filling each other |
 | `matching` | Iceberg reload | Visible-portion exhausts, hidden portion reloads at the queue tail; total qty conserved |
-| `matching` | Post-only rejection | Crossing post-only returns `Reject_price_band` |
+| `matching` | Post-only rejection | Crossing post-only returns`Reject_price_band` |
 | `matching` | Cancel preserves FIFO | Canceling a mid-queue order leaves FIFO linkage intact across the gap |
-| `matching` | Sweep across levels | Aggressive order eating partial fills across 3 price levels with correct `pl_total_qty` |
-| `matching` | Level resurrection | Empty level + new order at same price re-promotes `best_level` |
+| `matching` | Sweep across levels | Aggressive order eating partial fills across 3 price levels with correct`pl_total_qty` |
+| `matching` | Level resurrection | Empty level + new order at same price re-promotes`best_level` |
 | `messaging` | MPSC FIFO (1 producer) | Single-producer/consumer round-trip preserves order |
 | `messaging` | MPSC FIFO (4 domains) | 4 OCaml Domains push concurrently; per-producer FIFO holds across 1000 messages |
 | `regression` | Zero per-order allocation | `≤ 0.20 bytes/order` over 100k submits (measured: ~0.06) |
 | `regression` | Throughput floor | `≥ 0.5 M orders/sec` (measured: ~30+) |
 | `regression` | p99 latency ceiling | `≤ 100 μs` (measured: ~1 μs) |
 
-The two matching cases that originally surfaced as test failures (`Sweep across levels` and `Level resurrection`) caught a real production bug — an OCaml scope gotcha where `else let … in …; stmt; stmt;` silently extended into following statements, dropping `pl_total_qty` and the resurrection check on the `tail_idx = -1` code path. Fix shipped; the tests stay as regression sentinels.
+The two matching cases that originally surfaced as test failures (`Sweep across levels`and`Level resurrection`) caught a real production bug — an OCaml scope gotcha where `else let … in …; stmt; stmt;`silently extended into following statements, dropping`pl_total_qty`and the resurrection check on the`tail_idx = -1` code path. Fix shipped; the tests stay as regression sentinels.
 
 ---
 
