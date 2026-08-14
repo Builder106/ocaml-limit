@@ -24,6 +24,42 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_NOTIFY_USER_LIST: ""
 
+  format:
+    name: Format check (ocamlformat)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: '5.2'
+          opam-pin: false
+
+      - name: Install ocamlformat
+        run: opam install --yes ocamlformat
+
+      - name: Check formatting
+        run: opam exec -- ocamlformat --check .
+
+  check:
+    name: Type check (dune build @check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: '5.2'
+          opam-pin: false
+
+      - name: Install deps
+        run: opam install --yes dune alcotest
+
+      - name: Type check
+        run: opam exec -- dune build @check
+
   test:
     name: OCaml unit & perf regression tests (${{ matrix.os }})
     strategy:
@@ -36,11 +72,14 @@ jobs:
 
       # ocaml/setup-ocaml handles the Windows case itself (opam's Cygwin
       # backend on that platform) — no extra per-OS steps needed here.
+      # Use msys2 on Windows to avoid --cygwin-internal-install experimental
+      # flag warning and findlib .install missing .exe extension warnings.
       - name: Set up OCaml
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: '5.2'
           opam-pin: false
+          windows-environment: msys2
 
       - name: Install test deps
         run: opam install --yes alcotest
