@@ -1,7 +1,7 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.png">
   <source media="(prefers-color-scheme: light)" srcset="assets/banner-light.png">
-  <img alt="OCaml LOB — Limit-Order-Book Matching Engine in OCaml 5" src="assets/banner-dark.png">
+  <img alt="OCaml LOB: Limit-Order-Book Matching Engine in OCaml 5" src="assets/banner-dark.png">
 </picture>
 
 # OCaml LOB
@@ -18,15 +18,21 @@
 [![Oracle Cloud](https://img.shields.io/badge/Oracle_Cloud-F80000?logo=oracle&logoColor=white)](https://www.oracle.com/cloud/)
 [![Demo](https://img.shields.io/badge/demo-live-success.svg)](https://ocaml-lob.vercel.app/)
 
-A high-performance **limit-order-book matching engine in OCaml 5**, with a Dream HTTP + Server-Sent-Events server and a Bloomberg-terminal–styled browser dashboard. The matching hot path is **allocation-free per submit**(bench-validated), achieves**~18 M orders/sec**in the clean perf test, and holds**p99 latency under 1 μs**.
+> **A high-speed financial exchange engine.** OCaml-Limit pairs buyers and sellers at sub-millisecond speeds, featuring a live Bloomberg-style trading terminal.
 
-🟢 **Live demo:** [ocaml-lob.vercel.app](https://ocaml-lob.vercel.app/) — dashboard on Vercel, matching engine on a free-tier Oracle Cloud VM. Click the (i) in the top right for an in-app tour.
+## 💡 What is OCaml-Limit?
+
+At modern stock exchanges, millions of buy and sell orders arrive every second. OCaml-Limit is the core engine responsible for matching buyers and sellers instantly and fairly. It is built to run continuously with zero micro-pauses or lag, paired with an interactive market dashboard.
+
+The matching hot path is allocation-free per submit (bench-validated), achieves ~18 million orders/sec in clean performance benchmarks, and holds p99 latency under 1 microsecond.
+
+🟢 **Live demo:** [ocaml-lob.vercel.app](https://ocaml-lob.vercel.app/) (dashboard hosted on Vercel, matching engine running on an Oracle Cloud VM). Click the info icon in the top right for an in-app tour.
 
 ---
 
-## What is this
+## 🛠 Technical Architecture
 
-A working approximation of an exchange-grade matching engine, built for performance learning + a recruiter-facing portfolio piece. The engine implements price-time priority matching with iceberg orders, post-only rejection, IOC (Immediate-Or-Cancel), FOK (Fill-Or-Kill), and pre-trade risk gates; the front-end visualizes a live book updating in real time.
+A working approximation of an exchange-grade matching engine. The engine implements price-time priority matching with iceberg orders, post-only rejection, IOC (Immediate-Or-Cancel), FOK (Fill-Or-Kill), and pre-trade risk gates; the front-end visualizes a live book updating in real time.
 
 The API is small enough to fit on a postcard:
 
