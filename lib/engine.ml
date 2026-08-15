@@ -1,7 +1,7 @@
 (** {1 The Matching Engine Core}
 
-    High-performance exchange-grade matching logic with O(log n) price-level
-    access and O(1) FIFO order execution.
+    High-performance exchange-grade matching logic with O(log n) price-level access and
+    O(1) FIFO order execution.
 
     {b Features}:
     - Full Limit Order Book (LOB) maintenance (Bids/Asks).
@@ -15,53 +15,52 @@ module Risk = Risk
 
 (** {2 Pre-Allocated Result Values}
 
-    The matching hot path returns a [(unit, Risk.risk_result) result]
-    on every call. Building [Ok ()] / [Error r] fresh per call boxes
-    a 1-tuple block (~16B) into the minor heap and is the dominant
-    source of GC pressure under bench load (~64 minor collections /
-    1M orders). Pre-allocating the four possible return values once
-    at module load lets [submit] return a shared reference each time. *)
+    The matching hot path returns a [(unit, Risk.risk_result) result] on every call.
+    Building [Ok ()] / [Error r] fresh per call boxes a 1-tuple block (~16B) into the
+    minor heap and is the dominant source of GC pressure under bench load (~64 minor
+    collections / 1M orders). Pre-allocating the four possible return values once at
+    module load lets [submit] return a shared reference each time. *)
 
 let r_ok = Ok ()
 let r_reject_price_band : (unit, Risk.risk_result) result = Error Risk.Reject_price_band
 let r_reject_max_qty : (unit, Risk.risk_result) result = Error Risk.Reject_max_qty
-let r_reject_position_limit : (unit, Risk.risk_result) result = Error Risk.Reject_position_limit
+
+let r_reject_position_limit : (unit, Risk.risk_result) result =
+  Error Risk.Reject_position_limit
 
 (** {2 Engine State} *)
 
 type t = {
-    book : order_book;
-    pool : Pool.t;
-    risk : Risk.position_tracker;
-    config : config;
-    mutable last_match_price : price;
+  book : order_book;
+  pool : Pool.t;
+  risk : Risk.position_tracker;
+  config : config;
+  mutable last_match_price : price;
 }
 
-(** Capacity of the per-side [Price_index] hashtable. Bench uses 100
-    distinct prices; this allows up to ~16k at a 25% load factor
-    without resize (which the table doesn't implement — instead it
-    raises [Failure] on overflow per the bounds check in [Price_index]).
+(** Capacity of the per-side [Price_index] hashtable. Bench uses 100 distinct prices; this
+    allows up to ~16k at a 25% load factor without resize (which the table doesn't
+    implement — instead it raises [Failure] on overflow per the bounds check in
+    [Price_index]).
 
-    Sized generously because the demo bot ([bin/server.ml]) does a
-    random-walk on its mid_price and can accumulate thousands of
-    unique price levels over many hours. An earlier 8192 cap brought
-    down the live VM after ~3h. 65536 buys orders-of-magnitude more
-    runway at ~512 KB per side memory cost. *)
+    Sized generously because the demo bot ([bin/server.ml]) does a random-walk on its
+    mid_price and can accumulate thousands of unique price levels over many hours. An
+    earlier 8192 cap brought down the live VM after ~3h. 65536 buys orders-of-magnitude
+    more runway at ~512 KB per side memory cost. *)
 let price_index_capacity = 65536
 
 (** [create config] initializes a fresh matching engine with pre-allocated pools. *)
 let create config =
   let pool = Pool.create config.max_orders in
-  let mk_side () = {
-    levels = Price_index.create price_index_capacity ~empty_value:sentinel_level;
-    best_level = sentinel_level;
-  } in
-  let book = {
-    bids = mk_side ();
-    asks = mk_side ();
-    nodes = pool.nodes;
-    next_node = 0;
-  } in
+  let mk_side () =
+    {
+      levels = Price_index.create price_index_capacity ~empty_value:sentinel_level;
+      best_level = sentinel_level;
+    }
+  in
+  let book =
+    { bids = mk_side (); asks = mk_side (); nodes = pool.nodes; next_node = 0 }
+  in
   { book; pool; risk = Risk.create_tracker (); config; last_match_price = 0 }
 
 (** {2 Price Level Management} *)
@@ -87,30 +86,28 @@ let rec find_link_pred side new_price lvl =
    fires on the cold path (first touch of a price), not per order. *)
 let link_level side book_side new_level =
   let new_price = new_level.pl_price in
-  if book_side.best_level == sentinel_level then begin
+  if book_side.best_level == sentinel_level then (
     new_level.pl_prev_level <- sentinel_level;
     new_level.pl_next_level <- sentinel_level;
-    book_side.best_level <- new_level
-  end else
+    book_side.best_level <- new_level)
+  else
     let new_beats_best =
       match side with
       | Buy -> new_price > book_side.best_level.pl_price
       | Ask -> new_price < book_side.best_level.pl_price
     in
-    if new_beats_best then begin
+    if new_beats_best then (
       new_level.pl_prev_level <- sentinel_level;
       new_level.pl_next_level <- book_side.best_level;
       book_side.best_level.pl_prev_level <- new_level;
-      book_side.best_level <- new_level
-    end else begin
+      book_side.best_level <- new_level)
+    else
       let pred = find_link_pred side new_price book_side.best_level in
       let succ = pred.pl_next_level in
       new_level.pl_prev_level <- pred;
       new_level.pl_next_level <- succ;
       pred.pl_next_level <- new_level;
-      if succ != sentinel_level then
-        succ.pl_prev_level <- new_level
-    end
+      if succ != sentinel_level then succ.pl_prev_level <- new_level
 
 (* [Price_index.find] raises [Not_found] on miss (no [Some]/[None]
    allocation) and is alloc-free on hit. The miss path allocates the
@@ -120,31 +117,32 @@ let get_or_create_level side book_side price =
   match Price_index.find book_side.levels price with
   | level -> level
   | exception Not_found ->
-      let level = {
-        pl_price = price;
-        pl_total_qty = 0;
-        pl_order_count = 0;
-        pl_head = -1;
-        pl_tail = -1;
-        pl_prev_level = sentinel_level;
-        pl_next_level = sentinel_level;
-      } in
+      let level =
+        {
+          pl_price = price;
+          pl_total_qty = 0;
+          pl_order_count = 0;
+          pl_head = -1;
+          pl_tail = -1;
+          pl_prev_level = sentinel_level;
+          pl_next_level = sentinel_level;
+        }
+      in
       Price_index.add book_side.levels price level;
       link_level side book_side level;
       level
 
 (** {2 The Matching Loop}
 
-    [fill_loop] is a top-level recursive function rather than a closure
-    inside [match_aggressive], so the recursive self-call compiles to a
-    jump with no per-submit closure allocation.
+    [fill_loop] is a top-level recursive function rather than a closure inside
+    [match_aggressive], so the recursive self-call compiles to a jump with no per-submit
+    closure allocation.
 
-    Level exhaustion advances via the doubly-linked list of price levels
-    ([pl_next_level]) instead of [PriceMap.max_binding_opt] /
-    [min_binding_opt] — those allocate a [Some (k, v)] tuple per call,
-    which under bench load (alternating Buy/Ask at the same prices,
-    causing one match-and-clear cycle per pair) is a significant
-    residual allocator. *)
+    Level exhaustion advances via the doubly-linked list of price levels ([pl_next_level])
+    instead of [PriceMap.max_binding_opt] / [min_binding_opt] — those allocate a
+    [Some (k, v)] tuple per call, which under bench load (alternating Buy/Ask at the same
+    prices, causing one match-and-clear cycle per pair) is a significant residual
+    allocator. *)
 
 let rec fill_loop engine order on_fill opposite_book =
   if order.remaining_qty <= 0 then ()
@@ -153,7 +151,9 @@ let rec fill_loop engine order on_fill opposite_book =
     let best_level = opposite_book.best_level in
     let best_price = best_level.pl_price in
     let can_match =
-      match order.side with Buy -> order.price >= best_price | Ask -> order.price <= best_price
+      match order.side with
+      | Buy -> order.price >= best_price
+      | Ask -> order.price <= best_price
     in
 
     if not can_match then ()
@@ -208,15 +208,14 @@ let rec fill_loop engine order on_fill opposite_book =
                 in
                 let new_idx = Pool.alloc engine.pool reloaded_order in
                 let tail_idx = best_level.pl_tail in
-                (if tail_idx = -1 then begin
+                (if tail_idx = -1 then (
                    best_level.pl_head <- new_idx;
-                   best_level.pl_tail <- new_idx
-                 end else begin
+                   best_level.pl_tail <- new_idx)
+                 else
                    let tail_node = Pool.get engine.pool tail_idx in
                    tail_node.qn_next <- new_idx;
                    (Pool.get engine.pool new_idx).qn_prev <- tail_idx;
-                   best_level.pl_tail <- new_idx
-                 end);
+                   best_level.pl_tail <- new_idx);
                 best_level.pl_total_qty <- best_level.pl_total_qty + reload_qty;
                 best_level.pl_order_count <- best_level.pl_order_count + 1)
               else ()
@@ -237,7 +236,9 @@ let rec count_available_liquidity order_side order_price level =
       | Ask -> order_price <= level.pl_price
     in
     if not can_match then 0
-    else level.pl_total_qty + count_available_liquidity order_side order_price level.pl_next_level
+    else
+      level.pl_total_qty
+      + count_available_liquidity order_side order_price level.pl_next_level
 
 (** {2 Public API} *)
 
@@ -253,27 +254,33 @@ let submit engine order on_fill =
       order.status <- Rejected;
       r_reject_position_limit
   | Risk.Pass ->
-      let opposite_book = if order.side = Buy then engine.book.asks else engine.book.bids in
+      let opposite_book =
+        if order.side = Buy then engine.book.asks else engine.book.bids
+      in
       let best_opp_level = opposite_book.best_level in
       let would_match =
         if best_opp_level == sentinel_level then false
         else
           let best_opp = best_opp_level.pl_price in
-          match order.side with Buy -> order.price >= best_opp | Ask -> order.price <= best_opp
+          match order.side with
+          | Buy -> order.price >= best_opp
+          | Ask -> order.price <= best_opp
       in
 
       if order.order_type = Post_only && would_match then (
         order.status <- Rejected;
         r_reject_price_band)
-      else if order.order_type = FOK then (
-        let avail = count_available_liquidity order.side order.price opposite_book.best_level in
+      else if order.order_type = FOK then
+        let avail =
+          count_available_liquidity order.side order.price opposite_book.best_level
+        in
         if avail < order.remaining_qty then (
           order.status <- Rejected;
           r_ok)
         else (
           match_aggressive engine order on_fill;
           if order.status = Active then order.status <- Filled;
-          r_ok))
+          r_ok)
       else if order.order_type = IOC then (
         match_aggressive engine order on_fill;
         if order.remaining_qty > 0 then order.status <- Cancelled
@@ -282,7 +289,9 @@ let submit engine order on_fill =
       else (
         match_aggressive engine order on_fill;
         if order.remaining_qty > 0 then (
-          let book_side = if order.side = Buy then engine.book.bids else engine.book.asks in
+          let book_side =
+            if order.side = Buy then engine.book.bids else engine.book.asks
+          in
           let level = get_or_create_level order.side book_side order.price in
           let was_empty = level.pl_head = -1 in
           let node_idx = Pool.alloc engine.pool order in
@@ -293,15 +302,14 @@ let submit engine order on_fill =
              pl_total_qty / pl_order_count updates AND the resurrection
              check below all silently move INTO the else branch and
              never execute on the [tail_idx = -1] path. *)
-          (if tail_idx = -1 then begin
+          (if tail_idx = -1 then (
              level.pl_head <- node_idx;
-             level.pl_tail <- node_idx
-           end else begin
+             level.pl_tail <- node_idx)
+           else
              let tail_node = Pool.get engine.pool tail_idx in
              tail_node.qn_next <- node_idx;
              (Pool.get engine.pool node_idx).qn_prev <- tail_idx;
-             level.pl_tail <- node_idx
-           end);
+             level.pl_tail <- node_idx);
           level.pl_total_qty <- level.pl_total_qty + order.remaining_qty;
           level.pl_order_count <- level.pl_order_count + 1;
           (* Resurrection: if the level was empty (lazily kept after a
@@ -309,48 +317,48 @@ let submit engine order on_fill =
              have moved past it. Promote back if this level is more
              aggressive than the current best. The DLL pointers are
              still valid from the original [link_level] call. *)
-          if was_empty then begin
+          if was_empty then
             let cur_best = book_side.best_level in
             let promote =
               cur_best == sentinel_level
-              || (match order.side with
-                  | Buy -> level.pl_price > cur_best.pl_price
-                  | Ask -> level.pl_price < cur_best.pl_price)
+              ||
+              match order.side with
+              | Buy -> level.pl_price > cur_best.pl_price
+              | Ask -> level.pl_price < cur_best.pl_price
             in
-            if promote then book_side.best_level <- level
-          end)
+            if promote then book_side.best_level <- level)
         else if order.status = Active then order.status <- Filled;
         r_ok)
 
-(** [cancel engine order_id price side] removes an order from the book.
-    O(1) average to find the price level via [Price_index], then O(k)
-    to scan the level's FIFO queue for the order id. *)
+(** [cancel engine order_id price side] removes an order from the book. O(1) average to
+    find the price level via [Price_index], then O(k) to scan the level's FIFO queue for
+    the order id. *)
 let cancel engine order_id price side =
-    let book_side = if side = Buy then engine.book.bids else engine.book.asks in
-    match Price_index.find book_side.levels price with
-    | exception Not_found -> false
-    | level ->
-        (* Scan the level (O(k)) — in a production system, we'd use a 
+  let book_side = if side = Buy then engine.book.bids else engine.book.asks in
+  match Price_index.find book_side.levels price with
+  | exception Not_found -> false
+  | level ->
+      (* Scan the level (O(k)) — in a production system, we'd use a 
            hash-map of order_id -> node_idx for O(1) cancel. *)
-        let rec find_and_remove idx =
-            if idx = -1 then false
-            else
-                let node = Pool.get engine.pool idx in
-                if node.qn_order.id = order_id then (
-                    let prev_idx = node.qn_prev in
-                    let next_idx = node.qn_next in
-                    
-                    if prev_idx <> -1 then (Pool.get engine.pool prev_idx).qn_next <- next_idx
-                    else level.pl_head <- next_idx;
-                    
-                    if next_idx <> -1 then (Pool.get engine.pool next_idx).qn_prev <- prev_idx
-                    else level.pl_tail <- prev_idx;
-                    
-                    level.pl_total_qty <- level.pl_total_qty - node.qn_order.remaining_qty;
-                    level.pl_order_count <- level.pl_order_count - 1;
-                    node.qn_order.status <- Cancelled;
-                    Pool.free engine.pool idx;
-                    true
-                ) else find_and_remove node.qn_next
-        in
-        find_and_remove level.pl_head
+      let rec find_and_remove idx =
+        if idx = -1 then false
+        else
+          let node = Pool.get engine.pool idx in
+          if node.qn_order.id = order_id then (
+            let prev_idx = node.qn_prev in
+            let next_idx = node.qn_next in
+
+            if prev_idx <> -1 then (Pool.get engine.pool prev_idx).qn_next <- next_idx
+            else level.pl_head <- next_idx;
+
+            if next_idx <> -1 then (Pool.get engine.pool next_idx).qn_prev <- prev_idx
+            else level.pl_tail <- prev_idx;
+
+            level.pl_total_qty <- level.pl_total_qty - node.qn_order.remaining_qty;
+            level.pl_order_count <- level.pl_order_count - 1;
+            node.qn_order.status <- Cancelled;
+            Pool.free engine.pool idx;
+            true)
+          else find_and_remove node.qn_next
+      in
+      find_and_remove level.pl_head
