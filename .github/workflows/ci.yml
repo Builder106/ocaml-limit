@@ -36,8 +36,8 @@ jobs:
           ocaml-compiler: '5.2'
           opam-pin: false
 
-      - name: Install ocamlformat & opam-dctrl
-        run: opam install --yes dune ocamlformat.0.27.0 opam-dctrl
+      - name: Install ocamlformat
+        run: opam install --yes dune ocamlformat.0.27.0
 
       - name: Check formatting (dune @fmt / ocamlformat --check)
         run: |
