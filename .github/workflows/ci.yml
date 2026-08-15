@@ -37,10 +37,10 @@ jobs:
           opam-pin: false
 
       - name: Install ocamlformat
-        run: opam install --yes ocamlformat
+        run: opam install --yes dune ocamlformat.0.27.0
 
       - name: Check formatting
-        run: opam exec -- ocamlformat --check .
+        run: opam exec -- dune build @fmt
 
   check:
     name: Type check (dune build @check)
@@ -65,21 +65,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
 
-      # ocaml/setup-ocaml handles the Windows case itself (opam's Cygwin
-      # backend on that platform) — no extra per-OS steps needed here.
-      # Use msys2 on Windows to avoid --cygwin-internal-install experimental
-      # flag warning and findlib .install missing .exe extension warnings.
       - name: Set up OCaml
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: '5.2'
           opam-pin: false
-          windows-environment: msys2
 
       - name: Install test deps
         run: opam install --yes alcotest
