@@ -25,7 +25,7 @@ jobs:
           GITLEAKS_NOTIFY_USER_LIST: ""
 
   format:
-    name: Format check (ocamlformat)
+    name: Format check (ocamlformat) & opam lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -36,11 +36,16 @@ jobs:
           ocaml-compiler: '5.2'
           opam-pin: false
 
-      - name: Install ocamlformat
-        run: opam install --yes dune ocamlformat.0.27.0
+      - name: Install ocamlformat & opam-dctrl
+        run: opam install --yes dune ocamlformat.0.27.0 opam-dctrl
 
-      - name: Check formatting
-        run: opam exec -- dune build @fmt
+      - name: Check formatting (dune @fmt / ocamlformat --check)
+        run: |
+          opam exec -- dune build @fmt
+          opam exec -- ocamlformat --check lib/*.ml lib/*.mli test/*.ml
+
+      - name: Opam lint
+        run: opam lint --strict ocaml_lob.opam
 
   check:
     name: Type check (dune build @check)
