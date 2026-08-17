@@ -126,8 +126,8 @@ type price_level = {
     wrapper; a self-referential [sentinel_level] (defined below) plays the role of "no
     level". Compare with physical equality ([== sentinel_level]) to test the boundary.
 
-    Maintained alongside the price index so [Engine.fill_loop] can advance to the next-best
-    level on exhaustion in O(1) without paying an allocation penalty. *)
+    Maintained alongside the price index so [Engine.fill_loop] can advance to the
+    next-best level on exhaustion in O(1) without paying an allocation penalty. *)
 
 (** Self-referential placeholder used in place of [None] for level-list boundaries and the
     empty [book_side.best_level]. Allocated exactly once at module load. Field values are
@@ -159,8 +159,8 @@ let sentinel_level : price_level =
 type book_side = { levels : price_level Price_index.t; mutable best_level : price_level }
 (** A side of the order book.
 
-    [levels] is a [Price_index] (pre-allocated open-addressing hashtable). Only [find] / [add]
-    are used; the engine's lazy-keep policy means no removals.
+    [levels] is a [Price_index] (pre-allocated open-addressing hashtable). Only [find] /
+    [add] are used; the engine's lazy-keep policy means no removals.
 
     [best_level] is the head of a doubly-linked list of levels (via [pl_prev_level] /
     [pl_next_level]) sorted by aggressiveness, so [fill_loop] can advance to the next-best
