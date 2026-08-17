@@ -103,10 +103,7 @@ class LOBTerminal {
     }
 
     connect() {
-        // EventSource (SSE) replaces the previous WebSocket. Same JSON
-        // payloads; only the transport changes. EventSource auto-reconnects
-        // on transport error, so we don't need the setTimeout from the
-        // WS version.
+        // Connects via Server-Sent Events (SSE) with automatic browser retry.
         this.es = new EventSource(`${API_BASE}/events`);
 
         this.es.onopen = () => {
@@ -120,9 +117,6 @@ class LOBTerminal {
         };
 
         this.es.onerror = () => {
-            // Browser auto-retries via EventSource; we just reflect the
-            // visible state. Status flips back to LIVE when [onopen]
-            // fires on the successful reconnect.
             this.updateStatus(false);
         };
     }
@@ -162,11 +156,9 @@ class LOBTerminal {
         const askContainer = document.getElementById('ask-book');
         const bidContainer = document.getElementById('bid-book');
         
-        // Calculate max cumulative for normalization
         const allLevels = [...this.asks, ...this.bids];
         const maxCumulative = Math.max(...allLevels.map(l => l.totalSize)) || 1;
 
-        // Render Asks (Sell) - Background bars on left
         askContainer.innerHTML = this.asks.map(a => {
             const width = (a.totalSize / maxCumulative) * 100;
             return `
@@ -179,7 +171,6 @@ class LOBTerminal {
             `;
         }).join('');
 
-        // Render Bids (Buy) - Background bars on right
         bidContainer.innerHTML = this.bids.map(b => {
             const width = (b.totalSize / maxCumulative) * 100;
             return `
@@ -192,7 +183,6 @@ class LOBTerminal {
             `;
         }).join('');
 
-        // Update Spread
         if (this.asks.length > 0 && this.bids.length > 0) {
             const bestAsk = this.asks[0].price;
             const bestBid = this.bids[0].price;

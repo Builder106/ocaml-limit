@@ -28,8 +28,8 @@ type timestamp = int
 (** {2 Order Side} *)
 
 type side =
-  | Buy  (** Bid side — willing to buy at the given price or lower *)
-  | Ask  (** Ask side — willing to sell at the given price or higher *)
+  | Buy  (** Bid side: willing to buy at the given price or lower *)
+  | Ask  (** Ask side: willing to sell at the given price or higher *)
 
 (** {2 Order Types} *)
 
@@ -82,7 +82,7 @@ type order = {
 (** {2 Execution Report}
 
     Produced by the engine on every fill event. These are value types (immutable records)
-    because they leave the hot path immediately — they are consumed by the
+    because they leave the hot path immediately; they are consumed by the
     reporting/logging layer which is not latency-sensitive. *)
 
 type fill = {
@@ -123,16 +123,15 @@ type price_level = {
     The [pl_prev_level] / [pl_next_level] fields form a doubly-linked list of price levels
     on each side of the book, sorted by aggressiveness (best at head). They're typed
     [price_level] rather than [price_level option] so reads don't allocate a [Some]
-    wrapper — a self-referential [sentinel_level] (defined below) plays the role of "no
+    wrapper; a self-referential [sentinel_level] (defined below) plays the role of "no
     level". Compare with physical equality ([== sentinel_level]) to test the boundary.
 
-    Maintained alongside [PriceMap] so [Engine.fill_loop] can advance to the next-best
-    level on exhaustion in O(1) without paying the [Some (k, v)] tuple allocation that
-    [PriceMap.max_binding_opt] / [min_binding_opt] would impose. *)
+    Maintained alongside the price index so [Engine.fill_loop] can advance to the next-best
+    level on exhaustion in O(1) without paying an allocation penalty. *)
 
 (** Self-referential placeholder used in place of [None] for level-list boundaries and the
     empty [book_side.best_level]. Allocated exactly once at module load. Field values are
-    intentionally meaningless — callers must check [lvl == sentinel_level] before
+    intentionally meaningless; callers must check [lvl == sentinel_level] before
     dereferencing. *)
 let sentinel_level : price_level =
   let rec s =
@@ -150,22 +149,18 @@ let sentinel_level : price_level =
 
 (** {2 Order Book}
 
-    The top-level order book uses OCaml's stdlib [Map] (a balanced binary search tree,
-    specifically a height-balanced AVL tree) for price-level lookup. This guarantees O(log
-    n) insertion, deletion, and best-price access where n is the number of distinct price
-    levels.
+    The top-level order book uses an open-addressing hashtable ([Price_index.t]) with an
+    intrusive doubly-linked list for price level lookup and ordered iteration.
 
-    We maintain separate maps for bids and asks:
-    - Bids: sorted descending (best bid = max key)
-    - Asks: sorted ascending (best ask = min key) *)
+    We maintain separate sides for bids and asks:
+    - Bids: best bid at head of linked list
+    - Asks: best ask at head of linked list *)
 
 type book_side = { levels : price_level Price_index.t; mutable best_level : price_level }
 (** A side of the order book.
 
-    [levels] is a [Price_index] (pre-allocated open-addressing hashtable) rather than
-    stdlib [Map.Make(Int)] — Map's [add] rebuilds tree-spine nodes per call and dominates
-    cold-path warmup allocation. Only [find] / [add] are used; the engine's lazy-keep
-    policy means no removals.
+    [levels] is a [Price_index] (pre-allocated open-addressing hashtable). Only [find] / [add]
+    are used; the engine's lazy-keep policy means no removals.
 
     [best_level] is the head of a doubly-linked list of levels (via [pl_prev_level] /
     [pl_next_level]) sorted by aggressiveness, so [fill_loop] can advance to the next-best
@@ -207,7 +202,7 @@ let default_config =
 (** {2 Helper Functions} *)
 
 (** [make_order ~id ~side ~price ~qty ~order_type ~timestamp] creates a new order value.
-    This is the only allocation point for orders — it happens at the gateway boundary,
+    This is the only allocation point for orders; it happens at the gateway boundary,
     outside the matching hot path. *)
 let make_order ~id ~side ~price ~qty ~order_type ~timestamp =
   {
@@ -222,14 +217,13 @@ let make_order ~id ~side ~price ~qty ~order_type ~timestamp =
   }
 
 (** [price_to_float p] converts a fixed-point price to a float for display. Only used in
-    reporting — never in the matching hot path. *)
+    reporting, never in the matching hot path. *)
 let price_to_float p = Float.of_int p /. 10_000.0
 
 (** [float_to_price f] converts a float to a fixed-point price. Used at the gateway
     boundary for order entry. *)
 let float_to_price f = Float.to_int (f *. 10_000.0)
 
-(** [opposite_side s] returns the other side of the market. *)
 let opposite_side = function Buy -> Ask | Ask -> Buy
 
 (** [side_to_string s] returns a human-readable string for a side. *)

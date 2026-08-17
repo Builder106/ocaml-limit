@@ -23,7 +23,7 @@ type t = {
 }
 (** The object pool state. *)
 
-(** Sentinel order used to initialize pool slots. Never participates in matching — exists
+(** Sentinel order used to initialize pool slots. Never participates in matching; exists
     only to satisfy the type system without using [option] (which would box). *)
 let sentinel_order : order =
   {
@@ -40,9 +40,8 @@ let sentinel_order : order =
 (** Sentinel node used to fill the pool array at initialization. *)
 let sentinel_node : queue_node = { qn_order = sentinel_order; qn_next = -1; qn_prev = -1 }
 
-(** [create capacity] allocates a pool of [capacity] queue nodes. This is the {b only}
-    allocation point in the system — it happens once at startup, before any orders arrive.
-*)
+(** [create capacity] allocates a pool of [capacity] queue nodes. This is the only
+    allocation point in the system, happening once at startup before orders arrive. *)
 let create capacity =
   let nodes = Array.make capacity sentinel_node in
   (* Initialize each slot with its own mutable copy *)
@@ -53,12 +52,9 @@ let create capacity =
   { nodes; free_stack; free_top = capacity - 1; allocated = 0; capacity }
 
 (** [alloc pool order] claims a node from the pool and initializes it with [order].
-    Returns the node index, or raises [Failure] if the pool is exhausted (which should
-    never happen in a well-sized system).
-
-    {b Complexity}: O(1), zero heap allocation. *)
+    Returns the node index, or raises [Failure] if the pool is exhausted. *)
 let alloc pool order =
-  if pool.free_top < 0 then failwith "Pool: exhausted — increase max_orders in config"
+  if pool.free_top < 0 then failwith "Pool: exhausted - increase max_orders in config"
   else
     let idx = pool.free_stack.(pool.free_top) in
     pool.free_top <- pool.free_top - 1;
@@ -69,9 +65,7 @@ let alloc pool order =
     node.qn_prev <- -1;
     idx
 
-(** [free pool idx] returns the node at [idx] to the pool.
-
-    {b Complexity}: O(1), zero heap allocation. *)
+(** [free pool idx] returns the node at [idx] to the pool. *)
 let free pool idx =
   pool.free_top <- pool.free_top + 1;
   pool.free_stack.(pool.free_top) <- idx;
@@ -82,7 +76,6 @@ let free pool idx =
   node.qn_next <- -1;
   node.qn_prev <- -1
 
-(** [get pool idx] returns the queue node at [idx]. {b Complexity}: O(1) array access. *)
 let[@inline] get pool idx = pool.nodes.(idx)
 
 (** [utilization pool] returns the fraction of the pool currently in use. Used for
