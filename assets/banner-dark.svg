@@ -25,12 +25,8 @@ Render with:
   <!-- Status-bar strip — matches the dashboard's header. -->
   <rect x="0" y="0" width="1200" height="40" fill="#000"/>
   <text x="40" y="27" fill="#00f0ff" font-size="14" font-weight="700" letter-spacing="0.05em">
-    QUANT TERMINAL · OCAML LOB
+    QUANT TERMINAL | OCAML LOB
   </text>
-  <g transform="translate(1080, 16)">
-    <circle cx="0" cy="6" r="5" fill="#00ff00"/>
-    <text x="14" y="11" fill="#00ff00" font-size="14" font-weight="700">LIVE</text>
-  </g>
 
   <!-- Logo: scaled favicon (red asks on top, green bids on bottom). -->
   <g transform="translate(80, 95) scale(3)">
@@ -57,7 +53,7 @@ Render with:
   <!-- Stat column labels. -->
   <g fill="#6b7280" font-size="12" font-weight="600" letter-spacing="0.15em">
     <text x="155" y="272">THROUGHPUT</text>
-    <text x="495" y="272">LATENCY · P99</text>
+    <text x="495" y="272">LATENCY | P99</text>
     <text x="855" y="272">PER-ORDER ALLOC</text>
   </g>
 
