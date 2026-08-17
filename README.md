@@ -177,11 +177,11 @@ For deploying to your own VM (Oracle Cloud Always-Free walkthrough), see [DEPLOY
 
 ```mermaid
 flowchart LR
-    push[git push main] --> test[test job<br/>dune build + runtest]
-    test -->|✓ pass| build[build-and-push<br/>linux/amd64 image<br/>+ push to GHCR]
-    test -->|✗ fail| abort[abort — broken code<br/>never reaches the VM]
-    build --> deploy[deploy<br/>SSH → docker pull<br/>→ docker run → smoke test]
-    deploy --> live[ocaml-lob.duckdns.org]
+    push["git push main"] --> test["test job<br/>dune build + runtest"]
+    test -->|✓ pass| build["build-and-push<br/>linux/amd64 image<br/>+ push to GHCR"]
+    test -->|✗ fail| abort["abort — broken code<br/>never reaches the VM"]
+    build --> deploy["deploy<br/>SSH → docker pull<br/>→ docker run → smoke test"]
+    deploy --> live["ocaml-lob.duckdns.org"]
 ```
 
 **Sequential gating**: the build job has `needs: test`, so a single Alcotest failure prevents the image from being built — let alone pushed or deployed. The deploy job has `needs: build-and-push`, so an image that fails to build never reaches the VM. Concurrency-gated (`group: deploy-prod`) so two simultaneous pushes can't race on the host.
