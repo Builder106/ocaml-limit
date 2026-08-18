@@ -32,9 +32,13 @@ The matching hot path is allocation-free per submit (bench-validated), achieves 
 
 ## 🛠 Technical Architecture
 
-A working approximation of an exchange-grade matching engine. The engine implements price-time priority matching with iceberg orders, post-only rejection, IOC (Immediate-Or-Cancel), FOK (Fill-Or-Kill), and pre-trade risk gates; the front-end visualizes a live book updating in real time.
+A working implementation of an exchange-grade matching engine. The engine matches trades based on price and time priority, supporting standard professional order types:
+- **Limit and Market Orders**: Standard trades at specified or market prices.
+- **Iceberg Orders**: Large orders that hide total volume to avoid moving the market.
+- **Immediate-or-Cancel (IOC) and Fill-or-Kill (FOK)**: Time-in-force conditions that prevent partial or lingering fills.
+- **Pre-trade Risk Checks**: Automated guardrails blocking invalid or oversized orders.
 
-The API is small enough to fit on a postcard:
+The core API is compact:
 
 ```ocaml
 open Ocaml_lob.Types
@@ -48,20 +52,19 @@ match Engine.submit engine order (fun passive_id active_id price qty _ts ->
         Printf.printf "fill: %d×%d @ %d (passive=%d active=%d)\n"
           qty 1 price passive_id active_id)
 with
-| Ok ()   -> () (*order accepted*)
-| Error _ -> () (*pre-trade risk rejected*)
+| Ok ()   -> () (* order accepted *)
+| Error _ -> () (* pre-trade risk rejected *)
 ```
 
-Six layered optimizations got the hot path from ~16 bytes/order down to **0.0033 bytes/order**:
+Six layered optimizations eliminate memory allocation overhead on the matching hot path:
+1. Reusing pre-allocated result constants
+2. Direct exception handling to avoid memory wrapper allocations
+3. Top-level execution loops that avoid runtime closures
+4. Compact doubly linked lists for price levels
+5. Reusing inactive price levels rather than rebuilding tree structures
+6. Fast custom hash tables replacing general-purpose map allocations
 
-1. Pre-allocated result-wrapper constants (no `Ok ()` boxing per submit)
-2. `PriceMap.find`+`exception Not_found`instead of`find_opt`(no`Some` boxing)
-3. Top-level `fill_loop` (no per-submit closure allocation)
-4. Intrusive doubly-linked list of price levels (no `max_binding_opt` tuple boxing)
-5. Lazy-keep on level exhaustion + resurrection promotion (no `PriceMap.remove` tree-spine rebuild)
-6. Custom open-addressing hashtable replacing stdlib `Map.Make(Int)` (no per-insert tree-spine rebuild)
-
-Full architectural deep-dive in [ONBOARDING.md](ONBOARDING.md).
+Full architectural details are in [ONBOARDING.md](ONBOARDING.md).
 
 ---
 
