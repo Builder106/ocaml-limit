@@ -32,20 +32,19 @@ COPY --chown=opam:opam dune-project ocaml_lob.opam ./
 # Install the runtime libraries the server needs. dream pulls in lwt
 # transitively. lwt_ppx is needed for the let%lwt syntax extensions
 # the server uses.
+# Install test dependencies.
 RUN opam update -y && \
-    opam install --yes dream yojson lwt_ppx
+    opam install --yes alcotest
 
-# Copy source and build the server binary.
-COPY --chown=opam:opam bin/ ./bin/
+# Copy source and build test & perf suite.
 COPY --chown=opam:opam lib/ ./lib/
+COPY --chown=opam:opam test/ ./test/
 
 # [@chown] Docker creates WORKDIR with root ownership even after a
 # `USER opam` directive, so dune can't write `_build/` underneath it.
-# `sudo chown` here keeps the slow opam-install layer (step 7) cached.
-# ocaml/opam images give the opam user passwordless sudo by default.
 RUN sudo chown -R opam:opam /home/opam/app && \
     eval $(opam env) && \
-    dune build bin/server.exe
+    dune build test/perf_test.exe
 
 # ----------------------------------------------------------------------
 # Stage 2: runtime
@@ -54,22 +53,16 @@ FROM ubuntu:22.04 AS runtime
 
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
-        libssl3 libgmp10 libev4 ca-certificates && \
+        ca-certificates && \
     rm -rf /var/lib/apt/lists/* && \
     useradd -r -s /usr/sbin/nologin -m -d /app ocaml
 
 WORKDIR /app
 
 COPY --from=builder --chown=ocaml:ocaml \
-     /home/opam/app/_build/default/bin/server.exe ./server
+     /home/opam/app/_build/default/test/perf_test.exe ./perf_test
 COPY --chown=ocaml:ocaml front/ ./front/
 
 USER ocaml
 
-# Bind to all interfaces so a reverse proxy on the host (Caddy) can
-# reach us. Local development without these env vars defaults to
-# localhost:8080 — see bin/server.ml.
-ENV INTERFACE=0.0.0.0 PORT=8080
-EXPOSE 8080
-
-CMD ["./server"]
+ENTRYPOINT ["./perf_test"]
