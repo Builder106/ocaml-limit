@@ -37,6 +37,10 @@ concurrency:
   group: deploy-prod
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  packages: write
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
