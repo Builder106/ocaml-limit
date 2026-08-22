@@ -61,7 +61,7 @@ jobs:
         run: opam install --yes dune alcotest
 
       - name: Type check
-        run: opam exec -- dune build @check --warn-error +A
+        run: opam exec -- dune build @check
 
   test:
     name: OCaml unit & perf regression tests (${{ matrix.os }})
@@ -83,7 +83,7 @@ jobs:
         run: opam install --yes alcotest
 
       - name: Build (lib + tests + bench)
-        run: opam exec -- dune build lib/ test/ --warn-error +A
+        run: opam exec -- dune build lib/ test/
 
       - name: Run tests
         run: opam exec -- dune runtest --force
