@@ -2,11 +2,6 @@
 
 (name ocaml_lob)
 
-(env
- (_
-  (flags
-   (:standard -warn-error +A))))
-
 (generate_opam_files true)
 
 (source
