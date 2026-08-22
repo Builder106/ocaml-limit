@@ -43,7 +43,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: builder106/ocaml-limit
 
 jobs:
   test:
@@ -209,7 +209,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} << 'EOF'
             set -e
-            docker pull ghcr.io/${{ github.repository }}:latest
+            docker pull ghcr.io/builder106/ocaml-limit:latest
             docker stop ocaml_lob || true
             docker rm ocaml_lob || true
             docker run -d \
@@ -217,7 +217,7 @@ jobs:
               --restart unless-stopped \
               -p 8080:8080 \
               -e OCaml_LOG_LEVEL=info \
-              ghcr.io/${{ github.repository }}:latest
+              ghcr.io/builder106/ocaml-limit:latest
           EOF
 
       - name: Smoke test
