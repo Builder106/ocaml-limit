@@ -191,26 +191,10 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "${SSH_HOST}" >> ~/.ssh/known_hosts
 
-      - name: Pull and restart container
+      - name: Pull and run container
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} << 'EOF'
             set -e
             docker pull ghcr.io/builder106/ocaml-limit:latest
-            docker stop ocaml_lob || true
-            docker rm ocaml_lob || true
-            docker run -d \
-              --name ocaml_lob \
-              --restart unless-stopped \
-              -p 8080:8080 \
-              -e OCaml_LOG_LEVEL=info \
-              ghcr.io/builder106/ocaml-limit:latest
-          EOF
-
-      - name: Smoke test
-        run: |
-          sleep 5
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} << 'EOF'
-            set -e
-            curl -sf http://localhost:8080/health >/dev/null
-            echo "Health check passed"
+            docker run --rm ghcr.io/builder106/ocaml-limit:latest
           EOF
