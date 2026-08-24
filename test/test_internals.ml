@@ -51,7 +51,44 @@ let test_messaging () =
   Messaging.push q 2;
   Alcotest.(check (option int)) "pop 1" (Some 1) (Messaging.pop q);
   Alcotest.(check (option int)) "pop 2" (Some 2) (Messaging.pop q);
-  Alcotest.(check (option int)) "empty pop again" None (Messaging.pop q)
+  Alcotest.(check (option int)) "empty pop again" None (Messaging.pop q);
+
+  (* Test Messaging.pop when head is Nil (corrupted/edge state) *)
+  let nil_q = { Messaging.head = Atomic.make Messaging.Nil; tail = Atomic.make Messaging.Nil } in
+  Alcotest.(check (option int)) "pop on Nil head" None (Messaging.pop nil_q);
+  (try
+     Messaging.push nil_q 3;
+     Alcotest.fail "Expected corrupted-tail failure"
+   with Failure _ -> ());
+
+  let retry_q = Messaging.create () in
+  let attempts = ref 0 in
+  let compare_and_set cell expected value =
+    incr attempts;
+    if !attempts = 1 then false else Atomic.compare_and_set cell expected value
+  in
+  Messaging.push_with_cas retry_q 4 compare_and_set;
+  Alcotest.(check int) "CAS retry exercised" 2 !attempts
+
+let test_messaging_contention () =
+  let q = Messaging.create () in
+  let domains =
+    List.init 16 (fun producer ->
+        Domain.spawn (fun () ->
+            for seq = 0 to 999 do
+              Messaging.push q ((producer * 1000) + seq)
+            done))
+  in
+  List.iter Domain.join domains;
+  let seen = ref 0 in
+  let rec drain () =
+    match Messaging.pop q with
+    | None -> ()
+    | Some _ -> incr seen; drain ()
+  in
+  drain ();
+  Alcotest.(check int) "all contended pushes popped" 16_000 !seen
+
 
 let test_risk () =
   let config =
@@ -213,7 +250,11 @@ let () =
           test_case "Stats" `Quick test_pool_stats;
         ] );
       ("types", [ test_case "ToString" `Quick test_types ]);
-      ("messaging", [ test_case "Queue" `Quick test_messaging ]);
+      ( "messaging",
+        [
+          test_case "Queue" `Quick test_messaging;
+          test_case "Contention" `Quick test_messaging_contention;
+        ] );
       ("risk", [ test_case "Validation" `Quick test_risk ]);
       ("price_index", [ test_case "Index" `Quick test_price_index ]);
       ("stats", [ test_case "Stats" `Quick test_stats ]);

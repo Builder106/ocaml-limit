@@ -231,24 +231,41 @@ let test_rejections () =
   let engine = Engine.create default_config in
   let bad_price = limit ~id:1 ~side:Buy ~price:999_999_999 ~qty:10 in
   let bad_qty = limit ~id:2 ~side:Buy ~price:100 ~qty:999_999_999 in
-  let pos_limit = limit ~id:3 ~side:Buy ~price:100 ~qty:9_999_999 in
+  let pos_limit_buy = limit ~id:3 ~side:Buy ~price:100 ~qty:9_999_999 in
+  let pos_limit_ask = limit ~id:4 ~side:Ask ~price:100 ~qty:9_999_999 in
 
   (* Force a huge position artificially *)
   engine.risk.net_position <- 9_000_000;
 
   let res1 = Engine.submit engine bad_price noop_on_fill in
   let res2 = Engine.submit engine bad_qty noop_on_fill in
-  let res3 = Engine.submit engine pos_limit noop_on_fill in
+  let res3 = Engine.submit engine pos_limit_buy noop_on_fill in
+  let res4 = Engine.submit engine pos_limit_ask noop_on_fill in
 
   Alcotest.(check bool)
     "reject price" true
     (match res1 with Error _ -> true | _ -> false);
   Alcotest.(check bool) "reject qty" true (match res2 with Error _ -> true | _ -> false);
-  Alcotest.(check bool) "reject pos" true (match res3 with Error _ -> true | _ -> false);
+  Alcotest.(check bool) "reject pos buy" true (match res3 with Error _ -> true | _ -> false);
+  Alcotest.(check bool) "reject pos ask" true (match res4 with Error _ -> true | _ -> false);
 
   Alcotest.(check string) "status 1" "REJECTED" (Types.status_to_string bad_price.status);
   Alcotest.(check string) "status 2" "REJECTED" (Types.status_to_string bad_qty.status);
-  Alcotest.(check string) "status 3" "REJECTED" (Types.status_to_string pos_limit.status)
+  Alcotest.(check string) "status 3" "REJECTED" (Types.status_to_string pos_limit_buy.status);
+  Alcotest.(check string) "status 4" "REJECTED" (Types.status_to_string pos_limit_ask.status)
+
+let test_position_and_ioc_status_edges () =
+  let engine = Engine.create default_config in
+  engine.risk.net_position <- default_config.max_position;
+  let buy = limit ~id:20 ~side:Buy ~price:100 ~qty:1 in
+  Alcotest.(check bool) "position-limit branch" true
+    (Engine.submit engine buy noop_on_fill = Error Risk.Reject_position_limit);
+
+  let engine = Engine.create default_config in
+  ignore (Engine.submit engine (limit ~id:21 ~side:Ask ~price:100 ~qty:1) noop_on_fill);
+  let ioc = make_order ~id:22 ~side:Buy ~price:100 ~qty:1 ~order_type:IOC ~timestamp:0 in
+  ignore (Engine.submit engine ioc noop_on_fill);
+  Alcotest.(check bool) "fully filled IOC status" true (ioc.status = Filled)
 
 let test_cancel_edge_cases () =
   let engine = Engine.create default_config in
@@ -272,7 +289,13 @@ let test_cancel_edge_cases () =
   Alcotest.(check bool) "cancel missing price" false (Engine.cancel engine 2 999 Buy);
 
   (* Cancel last remaining (o2), which becomes head and tail *)
-  Alcotest.(check bool) "cancel last" true (Engine.cancel engine 2 100 Buy)
+  Alcotest.(check bool) "cancel last" true (Engine.cancel engine 2 100 Buy);
+
+  (* Ask-side cancel *)
+  let a1 = limit ~id:10 ~side:Ask ~price:150 ~qty:10 in
+  let _ = Engine.submit engine a1 noop_on_fill in
+  Alcotest.(check bool) "cancel ask" true (Engine.cancel engine 10 150 Ask);
+  Alcotest.(check bool) "cancel ask missing price" false (Engine.cancel engine 10 999 Ask)
 
 let test_iceberg_reload_behind_other () =
   let engine = Engine.create default_config in
@@ -314,11 +337,11 @@ let test_link_level_edge_cases () =
   let _ = Engine.submit engine b2 noop_on_fill in
   let _ = Engine.submit engine b3 noop_on_fill in
 
-  (* Buy side: insert in middle (between 90 and 80) *)
+  (* Buy side: insert in middle (between 90 and 80) -> succ != sentinel *)
   let b4 = limit ~id:4 ~side:Buy ~price:85 ~qty:10 in
   let _ = Engine.submit engine b4 noop_on_fill in
 
-  (* Ask side: insert worst, then better, then best *)
+  (* Ask side: insert worst (highest price), then better, then best (lowest price) *)
   let a1 = limit ~id:5 ~side:Ask ~price:120 ~qty:10 in
   let a2 = limit ~id:6 ~side:Ask ~price:110 ~qty:10 in
   let a3 = limit ~id:7 ~side:Ask ~price:100 ~qty:10 in
@@ -327,18 +350,107 @@ let test_link_level_edge_cases () =
   let _ = Engine.submit engine a2 noop_on_fill in
   let _ = Engine.submit engine a3 noop_on_fill in
 
-  (* Ask side: insert in middle (between 110 and 120) *)
+  (* Ask side: insert in middle (between 110 and 120) -> succ != sentinel *)
   let a4 = limit ~id:8 ~side:Ask ~price:115 ~qty:10 in
   let _ = Engine.submit engine a4 noop_on_fill in
 
-  (* Resubmit / replace tests: order with Active/Filled status *)
-  let replace_order = { b4 with price = 86; remaining_qty = 5 } in
-  let _ = Engine.submit engine replace_order noop_on_fill in
+  (* Ask side: insert worse than 120 (at end, succ == sentinel) *)
+  let a5 = limit ~id:9 ~side:Ask ~price:130 ~qty:10 in
+  let _ = Engine.submit engine a5 noop_on_fill in
 
-  let replace_best = { b3 with price = 105; remaining_qty = 5 } in
-  let _ = Engine.submit engine replace_best noop_on_fill in
+  (* Buy side: insert worse than 80 (at end, succ == sentinel) *)
+  let b5 = limit ~id:10 ~side:Buy ~price:70 ~qty:10 in
+  let _ = Engine.submit engine b5 noop_on_fill in
 
   Alcotest.(check int) "done" 1 1
+
+let test_fok_multilevel () =
+  let engine = Engine.create default_config in
+  (* Stack ask levels: 100 (qty 10), 101 (qty 10), 102 (qty 10) *)
+  ignore (Engine.submit engine (limit ~id:1 ~side:Ask ~price:100 ~qty:10) noop_on_fill);
+  ignore (Engine.submit engine (limit ~id:2 ~side:Ask ~price:101 ~qty:10) noop_on_fill);
+  ignore (Engine.submit engine (limit ~id:3 ~side:Ask ~price:102 ~qty:10) noop_on_fill);
+
+  (* Buy FOK asking for 25 at limit 101: only 20 available (10 at 100, 10 at 101) -> reject *)
+  let fok_buy_fail =
+    make_order ~id:4 ~side:Buy ~price:101 ~qty:25 ~order_type:FOK ~timestamp:0
+  in
+  let fills_bf, cb_bf = make_fill_recorder () in
+  ignore (Engine.submit engine fok_buy_fail cb_bf);
+  Alcotest.(check int) "0 fills on Buy FOK fail" 0 (List.length !fills_bf);
+  Alcotest.(check bool) "Buy FOK status rejected" true (fok_buy_fail.status = Rejected);
+
+  (* Buy FOK asking for 25 at limit 102: 30 available -> filled across 3 levels *)
+  let fok_buy_pass =
+    make_order ~id:5 ~side:Buy ~price:102 ~qty:25 ~order_type:FOK ~timestamp:0
+  in
+  let fills_bp, cb_bp = make_fill_recorder () in
+  ignore (Engine.submit engine fok_buy_pass cb_bp);
+  Alcotest.(check int) "3 fills on Buy FOK pass" 3 (List.length !fills_bp);
+  Alcotest.(check bool) "Buy FOK status filled" true (fok_buy_pass.status = Filled);
+
+  (* Stack bid levels: 90 (qty 10), 89 (qty 10), 88 (qty 10) *)
+  ignore (Engine.submit engine (limit ~id:6 ~side:Buy ~price:90 ~qty:10) noop_on_fill);
+  ignore (Engine.submit engine (limit ~id:7 ~side:Buy ~price:89 ~qty:10) noop_on_fill);
+  ignore (Engine.submit engine (limit ~id:8 ~side:Buy ~price:88 ~qty:10) noop_on_fill);
+
+  (* Ask FOK asking for 25 at limit 89: only 20 available (10 at 90, 10 at 89) -> reject *)
+  let fok_ask_fail =
+    make_order ~id:9 ~side:Ask ~price:89 ~qty:25 ~order_type:FOK ~timestamp:0
+  in
+  let fills_af, cb_af = make_fill_recorder () in
+  ignore (Engine.submit engine fok_ask_fail cb_af);
+  Alcotest.(check int) "0 fills on Ask FOK fail" 0 (List.length !fills_af);
+  Alcotest.(check bool) "Ask FOK status rejected" true (fok_ask_fail.status = Rejected);
+
+  (* Ask FOK asking for 25 at limit 88: 30 available -> filled across 3 levels *)
+  let fok_ask_pass =
+    make_order ~id:10 ~side:Ask ~price:88 ~qty:25 ~order_type:FOK ~timestamp:0
+  in
+  let fills_ap, cb_ap = make_fill_recorder () in
+  ignore (Engine.submit engine fok_ask_pass cb_ap);
+  Alcotest.(check int) "3 fills on Ask FOK pass" 3 (List.length !fills_ap);
+  Alcotest.(check bool) "Ask FOK status filled" true (fok_ask_pass.status = Filled)
+
+let test_resting_after_partial_match () =
+  let engine = Engine.create default_config in
+  (* Resting ask of 10 at 100 *)
+  ignore (Engine.submit engine (limit ~id:1 ~side:Ask ~price:100 ~qty:10) noop_on_fill);
+  (* Aggressive Buy of 25 at 100: matches 10, remaining 15 rests on Bid side *)
+  let buy = limit ~id:2 ~side:Buy ~price:100 ~qty:25 in
+  let fills, cb = make_fill_recorder () in
+  ignore (Engine.submit engine buy cb);
+  Alcotest.(check int) "1 fill for buy" 1 (List.length !fills);
+  Alcotest.(check int) "Buy remaining 15" 15 buy.remaining_qty;
+  Alcotest.(check int) "Bid best level price" 100 engine.book.bids.best_level.pl_price;
+  Alcotest.(check int) "Bid best level qty" 15 engine.book.bids.best_level.pl_total_qty;
+
+  (* Aggressive Ask of 25 at 100: matches 15, remaining 10 rests on Ask side *)
+  let ask = limit ~id:3 ~side:Ask ~price:100 ~qty:25 in
+  let fills2, cb2 = make_fill_recorder () in
+  ignore (Engine.submit engine ask cb2);
+  Alcotest.(check int) "1 fill for ask" 1 (List.length !fills2);
+  Alcotest.(check int) "Ask remaining 10" 10 ask.remaining_qty;
+  Alcotest.(check int) "Ask best level price" 100 engine.book.asks.best_level.pl_price;
+  Alcotest.(check int) "Ask best level qty" 10 engine.book.asks.best_level.pl_total_qty
+
+let test_ask_resurrection () =
+  let engine = Engine.create default_config in
+  (* Two asks at 100 and 101 *)
+  ignore (Engine.submit engine (limit ~id:1 ~side:Ask ~price:100 ~qty:10) noop_on_fill);
+  ignore (Engine.submit engine (limit ~id:2 ~side:Ask ~price:101 ~qty:10) noop_on_fill);
+  Alcotest.(check int) "Initial best ask = 100" 100 engine.book.asks.best_level.pl_price;
+
+  (* Sweep both ask levels *)
+  ignore (Engine.submit engine (limit ~id:3 ~side:Buy ~price:100 ~qty:10) noop_on_fill);
+  ignore (Engine.submit engine (limit ~id:4 ~side:Buy ~price:101 ~qty:10) noop_on_fill);
+
+  (* Resurrect level 100 with a fresh ask *)
+  ignore (Engine.submit engine (limit ~id:5 ~side:Ask ~price:100 ~qty:7) noop_on_fill);
+  Alcotest.(check int)
+    "Best ask resurrected at 100" 100 engine.book.asks.best_level.pl_price;
+  Alcotest.(check int)
+    "Resurrected ask level qty = 7" 7 engine.book.asks.best_level.pl_total_qty
 
 let test_ioc_order () =
   let engine = Engine.create default_config in
@@ -388,9 +500,12 @@ let () =
           test_case "Post-only rejection" `Quick test_post_only_rejection;
           test_case "IOC order execution" `Quick test_ioc_order;
           test_case "FOK order execution" `Quick test_fok_order;
+          test_case "FOK multi-level" `Quick test_fok_multilevel;
+          test_case "Resting after partial match" `Quick test_resting_after_partial_match;
           test_case "Cancel preserves FIFO" `Quick test_cancel_preserves_fifo;
           test_case "Sweep across levels" `Quick test_sweep_across_levels;
           test_case "Level resurrection" `Quick test_resurrection;
+          test_case "Ask level resurrection" `Quick test_ask_resurrection;
         ] );
       ( "messaging",
         [
@@ -400,6 +515,7 @@ let () =
       ( "edge_cases",
         [
           test_case "Rejections" `Quick test_rejections;
+          test_case "Position and IOC edges" `Quick test_position_and_ioc_status_edges;
           test_case "Cancel edge cases" `Quick test_cancel_edge_cases;
           test_case "Iceberg reload behind" `Quick test_iceberg_reload_behind_other;
           test_case "Link level edge cases" `Quick test_link_level_edge_cases;

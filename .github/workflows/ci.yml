@@ -87,3 +87,37 @@ jobs:
 
       - name: Run tests
         run: opam exec -- dune runtest --force
+
+  coverage:
+    name: Unit coverage (lib)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: '5.2'
+          opam-pin: false
+      - name: Install coverage tools
+        run: opam install --yes alcotest bisect_ppx
+      - name: Build instrumented tests
+        run: opam exec -- dune build --instrument-with bisect_ppx test/test_engine.exe test/test_internals.exe
+      - name: Run instrumented tests
+        run: |
+          mkdir -p coverage
+          BISECT_ENABLE=YES BISECT_FILE="$PWD/coverage/engine.coverage" opam exec -- dune exec --no-build test/test_engine.exe
+          BISECT_ENABLE=YES BISECT_FILE="$PWD/coverage/internals.coverage" opam exec -- dune exec --no-build test/test_internals.exe
+          opam exec -- bisect-ppx-report merge coverage/merged.coverage coverage/*.coverage
+      - name: Enforce 100% deterministic library coverage
+        run: |
+          opam exec -- bisect-ppx-report summary --per-file coverage/merged.coverage
+          opam exec -- bisect-ppx-report cobertura --ignore-missing-files coverage.xml coverage/merged.coverage
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          root = ET.parse("coverage.xml").getroot()
+          for cls in root.findall(".//class"):
+              filename = cls.attrib.get("filename", "")
+              if filename.startswith("lib/"):
+                  rate = float(cls.attrib["line-rate"])
+                  if rate < 1.0:
+                      raise SystemExit(f"{filename}: {rate:.2%} line coverage")
+          PY

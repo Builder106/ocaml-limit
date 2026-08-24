@@ -11,17 +11,18 @@ let create () =
   let dummy = Next (Obj.magic (), Atomic.make Nil) in
   { head = Atomic.make dummy; tail = Atomic.make dummy }
 
-let push q v =
+let push_with_cas q v compare_and_set =
   let new_node = Next (v, Atomic.make Nil) in
   let rec loop () =
     let old_tail = Atomic.get q.tail in
     match old_tail with
-    | Nil -> loop () (* Should not happen *)
+    | Nil -> failwith "Messaging.push: queue tail is corrupted"
     | Next (_, next) ->
-        if Atomic.compare_and_set next Nil new_node then Atomic.set q.tail new_node
-        else loop ()
+        if compare_and_set next Nil new_node then Atomic.set q.tail new_node else loop ()
   in
   loop ()
+
+let push q v = push_with_cas q v Atomic.compare_and_set
 
 let pop q =
   let old_head = Atomic.get q.head in
