@@ -58,7 +58,7 @@ jobs:
       - name: Set up OCaml
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: '5.2'
+          ocaml-compiler: '5.5'
           opam-pin: false       # skip pinning the package — saves ~30s
 
       # Only install what test/ and bench/ actually need. dream + yojson

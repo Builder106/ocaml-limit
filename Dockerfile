@@ -13,7 +13,7 @@
 # ----------------------------------------------------------------------
 # Stage 1: build
 # ----------------------------------------------------------------------
-FROM ocaml/opam:ubuntu-22.04-ocaml-5.2 AS builder
+FROM ocaml/opam:ubuntu-22.04-ocaml-5.5 AS builder
 
 USER root
 RUN apt-get update -y && \

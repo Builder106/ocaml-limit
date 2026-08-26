@@ -33,7 +33,7 @@ jobs:
       - name: Set up OCaml
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: '5.2'
+          ocaml-compiler: '5.5'
           opam-pin: false
 
       - name: Install ocamlformat
@@ -54,7 +54,7 @@ jobs:
       - name: Set up OCaml
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: '5.2'
+          ocaml-compiler: '5.5'
           opam-pin: false
 
       - name: Install deps
@@ -76,7 +76,7 @@ jobs:
       - name: Set up OCaml
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: '5.2'
+          ocaml-compiler: '5.5'
           opam-pin: false
 
       - name: Install test deps
@@ -95,7 +95,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: '5.2'
+          ocaml-compiler: '5.5'
           opam-pin: false
       - name: Install coverage tools
         run: opam install --yes alcotest bisect_ppx
