@@ -18,7 +18,7 @@ FROM ocaml/opam:ubuntu-22.04-ocaml-5.2 AS builder
 USER root
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
-        libssl-dev libgmp-dev libev-dev pkg-config m4 zlib1g-dev && \
+    libssl-dev libgmp-dev libev-dev pkg-config m4 zlib1g-dev && \
     rm -rf /var/lib/apt/lists/*
 USER opam
 
@@ -51,16 +51,19 @@ RUN sudo chown -R opam:opam /home/opam/app && \
 # ----------------------------------------------------------------------
 FROM ubuntu:22.04 AS runtime
 
+LABEL org.opencontainers.image.source="https://github.com/Builder106/ocaml-limit"
+LABEL org.opencontainers.image.description="Low-latency pure OCaml limit order book engine"
+
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
-        ca-certificates && \
+    ca-certificates && \
     rm -rf /var/lib/apt/lists/* && \
     useradd -r -s /usr/sbin/nologin -m -d /app ocaml
 
 WORKDIR /app
 
 COPY --from=builder --chown=ocaml:ocaml \
-     /home/opam/app/_build/default/test/perf_test.exe ./perf_test
+    /home/opam/app/_build/default/test/perf_test.exe ./perf_test
 COPY --chown=ocaml:ocaml front/ ./front/
 
 USER ocaml

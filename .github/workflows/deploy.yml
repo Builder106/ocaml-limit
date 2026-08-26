@@ -43,7 +43,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: builder106/ocaml-limit
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   test:
@@ -107,6 +107,7 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -146,6 +147,7 @@ jobs:
           platforms: linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -167,8 +169,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=sha-${{ github.sha }}
+            type=raw,value=latest
+
       - name: Create and push multi-platform manifest
         run: |
+          TAG_SHA="${{ steps.meta.outputs.version }}"
           docker buildx imagetools create \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }} \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
