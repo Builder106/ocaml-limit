@@ -53,7 +53,7 @@ jobs:
     # anything ships. ~3-5 min cache-warm; ~6-8 min on first run.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Set up OCaml
         uses: ocaml/setup-ocaml@v3
@@ -79,7 +79,7 @@ jobs:
     needs: test
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -100,7 +100,7 @@ jobs:
             type=raw,value=sha-${{ github.sha }}-amd64
 
       - name: Build and push amd64
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
@@ -120,7 +120,7 @@ jobs:
     needs: test
     runs-on: ubuntu-24.04-arm
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -141,7 +141,7 @@ jobs:
             type=raw,value=sha-${{ github.sha }}-arm64
 
       - name: Build and push arm64
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile

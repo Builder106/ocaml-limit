@@ -19,7 +19,7 @@ jobs:
     name: Secret scan
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v3
@@ -31,7 +31,7 @@ jobs:
     name: Format check (ocamlformat) & opam lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Set up OCaml
         uses: ocaml/setup-ocaml@v3
@@ -52,7 +52,7 @@ jobs:
     name: Type check (dune build @check)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Set up OCaml
         uses: ocaml/setup-ocaml@v3
@@ -75,7 +75,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Set up OCaml
         uses: ocaml/setup-ocaml@v3
@@ -97,7 +97,7 @@ jobs:
     needs: [format, check]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
       - uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: '5.2'
