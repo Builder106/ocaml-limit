@@ -95,7 +95,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: '5.5'
+          ocaml-compiler: '5.2'
           opam-pin: false
       - name: Install coverage tools
         run: opam install --yes alcotest bisect_ppx
