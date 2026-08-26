@@ -246,19 +246,32 @@ let test_rejections () =
     "reject price" true
     (match res1 with Error _ -> true | _ -> false);
   Alcotest.(check bool) "reject qty" true (match res2 with Error _ -> true | _ -> false);
-  Alcotest.(check bool) "reject pos buy" true (match res3 with Error _ -> true | _ -> false);
-  Alcotest.(check bool) "reject pos ask" true (match res4 with Error _ -> true | _ -> false);
+  Alcotest.(check bool)
+    "reject pos buy" true
+    (match res3 with Error _ -> true | _ -> false);
+  Alcotest.(check bool)
+    "reject pos ask" true
+    (match res4 with Error _ -> true | _ -> false);
 
-  Alcotest.(check string) "status 1" "REJECTED" (Types.status_to_string bad_price.status);
-  Alcotest.(check string) "status 2" "REJECTED" (Types.status_to_string bad_qty.status);
-  Alcotest.(check string) "status 3" "REJECTED" (Types.status_to_string pos_limit_buy.status);
-  Alcotest.(check string) "status 4" "REJECTED" (Types.status_to_string pos_limit_ask.status)
+  Alcotest.(check string)
+    "status 1" "REJECTED"
+    (Types.status_to_string bad_price.status);
+  Alcotest.(check string)
+    "status 2" "REJECTED"
+    (Types.status_to_string bad_qty.status);
+  Alcotest.(check string)
+    "status 3" "REJECTED"
+    (Types.status_to_string pos_limit_buy.status);
+  Alcotest.(check string)
+    "status 4" "REJECTED"
+    (Types.status_to_string pos_limit_ask.status)
 
 let test_position_and_ioc_status_edges () =
   let engine = Engine.create default_config in
   engine.risk.net_position <- default_config.max_position;
   let buy = limit ~id:20 ~side:Buy ~price:100 ~qty:1 in
-  Alcotest.(check bool) "position-limit branch" true
+  Alcotest.(check bool)
+    "position-limit branch" true
     (Engine.submit engine buy noop_on_fill = Error Risk.Reject_position_limit);
 
   let engine = Engine.create default_config in

@@ -43,7 +43,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: builder106/ocaml-limit
 
 jobs:
   test:

@@ -84,11 +84,12 @@ let test_messaging_contention () =
   let rec drain () =
     match Messaging.pop q with
     | None -> ()
-    | Some _ -> incr seen; drain ()
+    | Some _ ->
+        incr seen;
+        drain ()
   in
   drain ();
   Alcotest.(check int) "all contended pushes popped" 16_000 !seen
-
 
 let test_risk () =
   let config =
