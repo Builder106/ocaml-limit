@@ -54,7 +54,9 @@ let test_messaging () =
   Alcotest.(check (option int)) "empty pop again" None (Messaging.pop q);
 
   (* Test Messaging.pop when head is Nil (corrupted/edge state) *)
-  let nil_q = { Messaging.head = Atomic.make Messaging.Nil; tail = Atomic.make Messaging.Nil } in
+  let nil_q =
+    { Messaging.head = Atomic.make Messaging.Nil; tail = Atomic.make Messaging.Nil }
+  in
   Alcotest.(check (option int)) "pop on Nil head" None (Messaging.pop nil_q);
   (try
      Messaging.push nil_q 3;

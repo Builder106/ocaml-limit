@@ -253,12 +253,8 @@ let test_rejections () =
     "reject pos ask" true
     (match res4 with Error _ -> true | _ -> false);
 
-  Alcotest.(check string)
-    "status 1" "REJECTED"
-    (Types.status_to_string bad_price.status);
-  Alcotest.(check string)
-    "status 2" "REJECTED"
-    (Types.status_to_string bad_qty.status);
+  Alcotest.(check string) "status 1" "REJECTED" (Types.status_to_string bad_price.status);
+  Alcotest.(check string) "status 2" "REJECTED" (Types.status_to_string bad_qty.status);
   Alcotest.(check string)
     "status 3" "REJECTED"
     (Types.status_to_string pos_limit_buy.status);
