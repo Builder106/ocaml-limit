@@ -11,6 +11,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   secrets:
     name: Secret scan
@@ -65,6 +68,7 @@ jobs:
 
   test:
     name: OCaml unit & perf regression tests (${{ matrix.os }})
+    needs: [format, check]
     strategy:
       fail-fast: false
       matrix:
@@ -90,6 +94,7 @@ jobs:
 
   coverage:
     name: Unit coverage (lib)
+    needs: [format, check]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
