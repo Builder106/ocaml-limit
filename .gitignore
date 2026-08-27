@@ -13,7 +13,6 @@ _build/
 *.cmxs
 
 # Editor/OS Specific
-.DS_Store
 .vscode/
 .history/
 *~
