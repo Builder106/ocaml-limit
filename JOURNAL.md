@@ -4,6 +4,10 @@
 > things happen — retrospectives need this raw material to land.
 > Reverse-chronological; one paragraph max per entry.
 
+## 2026-08-29: Git deployment branches restricted #decision
+
+Git-triggered Vercel deployments now run only for `main` and `staging`. The project keeps `main` as its Production Branch, so `staging` is the only Preview branch. Replaced the old `ignoreCommand`, which created canceled deployment records for blocked branches, with `git.deploymentEnabled`.
+
 ## 2026-08-23 — Truthful Bisect coverage and VM performance gate #decision
 
 Bisect coverage now builds and runs the correctness/internal executables directly with explicit `BISECT_FILE` paths, merges the generated files, and reports Cobertura XML. The CI gate checks each `lib/` class rather than the aggregate package node, so 100% means every instrumented library line is covered. Added focused tests for position-limit and fully-filled IOC paths, pool/messaging edge states, and producer contention. The prior synthetic CAS fixture corrupted the queue tail and could spin forever, so it was removed; an invalid tail now fails explicitly. Uninstrumented perf tests pass on ampere-dev; coverage instrumentation is excluded from the throughput floor because it materially perturbs the hot path.
