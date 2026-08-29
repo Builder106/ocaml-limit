@@ -11,6 +11,8 @@ _build/
 *.cmi
 *.cmxa
 *.cmxs
+coverage/
+coverage.xml
 
 # Editor/OS Specific
 .vscode/
