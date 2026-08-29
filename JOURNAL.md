@@ -16,6 +16,8 @@ Updated the README headline, summary tagline, and introduction to explain limit 
 
 Expanded the OCaml 5 matching engine's order type capabilities with Immediate-Or-Cancel (IOC) and Fill-Or-Kill (FOK) institutional order types. FOK pre-scans opposing book liquidity via a non-allocating level walk to guarantee full fill or immediate rejection prior to execution; IOC matches available resting liquidity and immediately cancels any remaining unexecuted balance without placing it on the order book. Zero minor/major GC allocation on the hot path remains fully preserved (~0.0033 bytes/order, 18M-38M ops/sec, <1μs p99 latency).
 
+## 2026-05-11 — Split frontend to Vercel and backend to Oracle VM with permissive CORS #decision
+
 Moved the dashboard to a static Vercel deploy (`ocaml-lob.vercel.app`) while the OCaml engine kept serving SSE + `POST /order`from the Oracle VM behind`ocaml-lob.duckdns.org`. The browser sniffs its own origin and points `/events`+`/order` at the Oracle host when it's running on Vercel, so the Dream server had to grow permissive CORS for the cross-origin SSE stream and the JSON POST preflight. Net effect: the part that has to be fast (the engine) stays on metal I control, and the part that just has to be reachable (static HTML/JS) sits on a CDN that won't wedge.
 
 ## 2026-05-11 — Native multi-arch via two runners, after QEMU failed once #decision #pivot
