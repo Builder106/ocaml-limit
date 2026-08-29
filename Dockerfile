@@ -49,7 +49,7 @@ RUN sudo chown -R opam:opam /home/opam/app && \
 # ----------------------------------------------------------------------
 # Stage 2: runtime
 # ----------------------------------------------------------------------
-FROM ubuntu:22.04 AS runtime
+FROM ubuntu:26.04 AS runtime
 
 LABEL org.opencontainers.image.source="https://github.com/Builder106/ocaml-limit"
 LABEL org.opencontainers.image.description="Low-latency pure OCaml limit order book engine"
