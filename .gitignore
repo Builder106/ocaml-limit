@@ -30,3 +30,7 @@ e2e/.features-gen/
 e2e/test-results/
 e2e/demo-output/
 e2e/playwright-report/
+
+# Companion demo videos (regenerable from GIFs)
+assets/demos/*.mp4
+assets/demos/*.webm
