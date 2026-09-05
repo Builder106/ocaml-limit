@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -126,3 +126,30 @@ jobs:
                   if rate < 1.0:
                       raise SystemExit(f"{filename}: {rate:.2%} line coverage")
           PY
+
+  deploy:
+    name: Trigger Vercel Deploy
+    needs: [secrets, test, coverage]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging')
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Deploy to Staging
+        if: github.ref == 'refs/heads/staging'
+        env:
+          HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_STAGING }}
+        run: |
+          if [ -z "$HOOK_URL" ]; then
+            echo "VERCEL_DEPLOY_HOOK_STAGING is not set; skipping deploy hook trigger"
+            exit 0
+          fi
+          curl -sS -f -X POST "$HOOK_URL"
+      - name: Deploy to Production
+        if: github.ref == 'refs/heads/main'
+        env:
+          HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_PROD }}
+        run: |
+          if [ -z "$HOOK_URL" ]; then
+            echo "VERCEL_DEPLOY_HOOK_PROD is not set; skipping deploy hook trigger"
+            exit 1
+          fi
+          curl -sS -f -X POST "$HOOK_URL"
