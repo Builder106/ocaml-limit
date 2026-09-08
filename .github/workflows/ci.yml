@@ -124,12 +124,35 @@ jobs:
               if filename.startswith("lib/"):
                   rate = float(cls.attrib["line-rate"])
                   if rate < 1.0:
-                      raise SystemExit(f"{filename}: {rate:.2%} line coverage")
+                  raise SystemExit(f"{filename}: {rate:.2%} line coverage")
+
+  dashboard-smoke:
+    name: Seeded dashboard smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - name: Install browser test dependencies
+        working-directory: e2e
+        run: npm ci
+      - name: Typecheck dashboard smoke
+        working-directory: e2e
+        run: npm run typecheck
+      - name: Install Chromium
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+      - name: Run seeded dashboard smoke
+        working-directory: e2e
+        run: npm test
           PY
 
   deploy:
     name: Trigger Vercel Deploy
-    needs: [secrets, test, coverage]
+    needs: [secrets, test, coverage, dashboard-smoke]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging')
     runs-on: ubuntu-24.04
     steps:

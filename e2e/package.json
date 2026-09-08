@@ -4,6 +4,8 @@
   "description": "Playwright + Gherkin demo-recording suite for the OCaml LOB dashboard. Produces mp4 demos that the README embeds.",
   "type": "module",
   "scripts": {
+    "test": "playwright test --config playwright.config.ts",
+    "typecheck": "tsc --noEmit",
     "demo": "DEMO=1 bddgen --config playwright.demo.config.ts && DEMO=1 playwright test --config playwright.demo.config.ts",
     "demo:headed": "DEMO=1 bddgen --config playwright.demo.config.ts && DEMO=1 playwright test --config playwright.demo.config.ts --headed",
     "gifs": "bash scripts/to-gifs.sh",
