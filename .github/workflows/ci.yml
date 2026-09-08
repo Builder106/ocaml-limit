@@ -124,7 +124,7 @@ jobs:
               if filename.startswith("lib/"):
                   rate = float(cls.attrib["line-rate"])
                   if rate < 1.0:
-                  raise SystemExit(f"{filename}: {rate:.2%} line coverage")
+                      raise SystemExit(f"{filename}: {rate:.2%} line coverage")
 
   dashboard-smoke:
     name: Seeded dashboard smoke
