@@ -24,6 +24,7 @@ test('seeded local SSE snapshot and order boundary', async ({ page }) => {
     }
     Object.defineProperty(window, 'EventSource', { value: SeededEventSource });
     Object.defineProperty(window, 'Chart', { value: SeededChart });
+    localStorage.setItem('onboardingSeen', '1');
   });
   const order = page.waitForRequest((request) => request.url().endsWith('/order'));
   await page.route('**/order', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }));

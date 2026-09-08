@@ -125,6 +125,7 @@ jobs:
                   rate = float(cls.attrib["line-rate"])
                   if rate < 1.0:
                       raise SystemExit(f"{filename}: {rate:.2%} line coverage")
+          PY
 
   dashboard-smoke:
     name: Seeded dashboard smoke
@@ -134,11 +135,9 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
-          cache: npm
-          cache-dependency-path: e2e/package-lock.json
       - name: Install browser test dependencies
         working-directory: e2e
-        run: npm ci
+        run: npm install
       - name: Typecheck dashboard smoke
         working-directory: e2e
         run: npm run typecheck
@@ -148,7 +147,6 @@ jobs:
       - name: Run seeded dashboard smoke
         working-directory: e2e
         run: npm test
-          PY
 
   deploy:
     name: Trigger Vercel Deploy
