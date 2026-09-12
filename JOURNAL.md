@@ -4,6 +4,10 @@
 > things happen — retrospectives need this raw material to land.
 > Reverse-chronological; one paragraph max per entry.
 
+## 2026-09-07 — Seeded local dashboard smoke boundary #test #decision
+
+The local Playwright smoke serves the static dashboard with a managed lifecycle, seeds the SSE messages, intercepts the local `POST /order`, and waits for its JSON response. The fixture marks onboarding as seen so the modal cannot intercept the order control; this remains a transport-bound smoke check, while native OCaml property and performance tests stay primary and the Gherkin demos remain manual and non-gating. Bisect coverage now merges its two explicit inputs and requires every `lib/` source file in the unchanged 100% gate.
+
 ## 2026-08-29: Git deployment branches restricted #decision
 
 Git-triggered Vercel deployments now run only for `main` and `staging`. The project keeps `main` as its Production Branch, so `staging` is the only Preview branch. Replaced the old `ignoreCommand`, which created canceled deployment records for blocked branches, with `git.deploymentEnabled`.
