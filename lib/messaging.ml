@@ -7,6 +7,11 @@
 type 'a node = Nil | Next of 'a * 'a node Atomic.t
 type 'a t = { head : 'a node Atomic.t; tail : 'a node Atomic.t }
 
+(** [create ()] allocates a new lock-free MPSC queue with a dummy sentinel node.
+    Safety: [Obj.magic ()] is used to construct the sentinel payload without
+    allocating an ['a option] wrapper on every node. Consumers in [pop] only
+    extract values from successor nodes and never read or unbox the dummy node's
+    payload, guaranteeing memory safety. *)
 (** [create ()] allocates a new lock-free MPSC queue with a dummy sentinel node. Safety:
     [Obj.magic ()] is used to construct the sentinel payload without allocating an
     ['a option] wrapper on every node. Consumers in [pop] only extract values from
