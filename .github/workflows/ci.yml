@@ -29,7 +29,7 @@ jobs:
 
   format:
     name: Format check (ocamlformat) & opam lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
@@ -50,7 +50,7 @@ jobs:
 
   check:
     name: Type check (dune build @check)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
@@ -95,7 +95,7 @@ jobs:
   coverage:
     name: Unit coverage (lib)
     needs: [format, check]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: ocaml/setup-ocaml@v3
@@ -129,7 +129,7 @@ jobs:
 
   dashboard-smoke:
     name: Seeded dashboard smoke
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
