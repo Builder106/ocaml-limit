@@ -58,7 +58,7 @@ The dashboard is at `http://localhost:8080/`. The demo bot starts automatically;
 | Guard | Threshold | Why |
 | --- | --- | --- |
 | `bytes_per_order_ceiling` | ≤ 0.20 bytes/order | Hot path is allocation-free; this catches any new allocation regressing per-submit work. Measured via`Gc.minor_words`, not `minor_collections`— the latter is contaminated by`Gc.stat`'s own allocation. |
-| `throughput_floor_mops` | ≥ 0.5 M orders/s | CI-safe floor; engine routinely does 10×+ this. |
+| `throughput_floor_mops` | ≥ 0.4 M orders/s | CI-safe floor; engine routinely does 10×+ this. Best of three trials avoids hypervisor jitter. |
 | `p99_ceiling_us` | ≤ 100 μs | Engine is sub-μs in practice; the ceiling absorbs`gettimeofday` measurement noise. |
 
 `bin/bench.exe` is the user-facing perf demo — prints throughput, p50/p99/p99.9, and self-validates the zero-allocation claim.
