@@ -207,7 +207,7 @@ jobs:
 
       - name: Pull and run container
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} << 'EOF'
+          ssh -i ~/.ssh/deploy_key ${SSH_USER}@${SSH_HOST} << 'EOF'
             set -e
             docker pull ghcr.io/builder106/ocaml-limit:latest
             docker run --rm ghcr.io/builder106/ocaml-limit:latest
