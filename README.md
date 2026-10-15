@@ -70,41 +70,9 @@ Full architectural details are in [ONBOARDING.md](ONBOARDING.md).
 
 ## Architecture (user flow)
 
-```mermaid
-sequenceDiagram
-    actor User as User<br/>(browser)
-    participant Caddy
-    participant Server as Dream HTTP<br/>(OCaml)
-    participant Engine as Matching<br/>Engine
-    participant Bot as Demo Bot
+![OCaml limit order book requests and events](assets/diagrams/request-and-events.png)
 
-    User->>Caddy: HTTPS GET /
-    Caddy->>Server: HTTP GET /
-    Server-->>User: index.html + app.js + favicon
-
-    User->>Caddy: GET /events (SSE)
-    Caddy->>Server: chunked HTTP stream
-
-    rect rgba(0, 240, 255, 0.08)
-    note over Server,Engine: every 500 ms while SSE open
-    Server->>Engine: snapshot_to_json
-    Engine-->>Server: book state via DLL walk
-    Server-->>User: data: SNAPSHOT (depth + spread)
-    end
-
-    rect rgba(0, 255, 0, 0.08)
-    note over Bot,Engine: bot loop, ~1 order/sec
-    Bot->>Engine: submit synthetic order
-    Engine-->>Bot: on_fill callback per fill
-    Bot->>Server: push trade to ring
-    Server-->>User: data: TRADE (tape entry, drained on tick)
-    end
-
-    User->>Server: POST /order {side, price, size}
-    Server->>Engine: Engine.submit
-    Engine-->>Server: on_fill → push to ring
-    Server-->>User: 200 {"status":"ok"} (TRADE follows via SSE)
-```
+Caddy passes page and SSE requests to Dream. Every 500 ms, Dream reads the matching engine book and sends a SNAPSHOT with depth and spread. The demo bot submits about one order per second; fills enter a trade ring and later reach the browser as TRADE events. `POST /order` returns `200 {"status":"ok"}`, with any fill following on SSE. [Editable HTML source](assets/diagrams/request-and-events.html).
 
 Caddy on the host handles TLS. The OCaml binary inside the container handles everything else. SSE replaced an earlier WebSocket transport after `gluten_lwt`'s WS close path was found to wedge the event loop in a tight retry-on-failed-write cycle (see commit `0c62bc0`).
 
@@ -178,20 +146,15 @@ For deploying to your own VM (Oracle Cloud Always-Free walkthrough), see [DEPLOY
 
 [.github/workflows/deploy.yml](.github/workflows/deploy.yml) wires up CI + CD on every push to `main`.
 
-```mermaid
-flowchart LR
-    push["git push main"] --> test["test job<br/>dune build + runtest"]
-    test -->|✓ pass| build["build-and-push<br/>linux/amd64 image<br/>+ push to GHCR"]
-    test -->|✗ fail| abort["abort — broken code<br/>never reaches the VM"]
-    build --> deploy["deploy<br/>SSH → docker pull<br/>→ docker run → smoke test"]
-    deploy --> live["ocaml-lob.duckdns.org"]
-```
+![OCaml limit order book release pipeline](assets/diagrams/deployment-flow.png)
 
-**Sequential gating**: the build job has `needs: test`, so a single Alcotest failure prevents the image from being built — let alone pushed or deployed. The deploy job has `needs: build-and-push`, so an image that fails to build never reaches the VM. Concurrency-gated (`group: deploy-prod`) so two simultaneous pushes can't race on the host.
+A push to `main` runs `dune build` and `dune runtest`. Passing tests gate parallel native amd64 and arm64 image builds; their digests merge into one GHCR manifest. Deployment pulls the release and smoke-tests the host. A failed test stops before any image is published. [Editable HTML source](assets/diagrams/deployment-flow.html).
 
-**Caching**: `ocaml/setup-ocaml@v3`caches the opam switch (~2 min cache-warm vs ~8 min cold). Docker layers cache via`cache-from: type=gha`, so source-only changes rebuild the image in ~1.5 min.
+**Sequential gating**: both architecture builds have `needs: test`, so a failed test prevents either image from being published. `merge-manifest` waits for both builds, and `deploy-vm` waits for the manifest. The `deploy-prod` concurrency group keeps releases from racing on the host.
 
-**Secrets** (`SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY`) are resolved at workflow start time and used by `appleboy/ssh-action` to reach the VM. Setup walkthrough in DEPLOY.md.
+**Caching**: `ocaml/setup-ocaml@v3` caches the opam switch. Both native Docker builds use the GitHub Actions layer cache.
+
+**Secrets** (`SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY`) are used by the deploy job's SSH command. Setup walkthrough in DEPLOY.md.
 
 ---
 

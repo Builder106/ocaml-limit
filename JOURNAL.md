@@ -4,6 +4,14 @@
 > things happen — retrospectives need this raw material to land.
 > Reverse-chronological; one paragraph max per entry.
 
+## 2026-10-15: Redrew request timing and release gates #decision
+
+The README request figure now follows Browser, Caddy, Dream, the book engine, and the trade ring over time. It shows the HTTP response before the later SSE trade message. The release figure makes the test gate, parallel native image builds, digest merge, and host smoke test explicit. Both PNGs retain editable HTML sources.
+
+## 2026-10-13: Replaced README Mermaid diagrams #decision
+
+The README now has separate request/event and release figures, each with a PNG embed and editable HTML source. The release figure follows the current workflow: passing tests start native amd64 and arm64 builds, then a merged GHCR manifest deploys. The older one-architecture Mermaid sketch was stale.
+
 ## 2026-09-16 — Resilient throughput regression floor #test #decision
 
 Insulated the performance regression suite against CPU steal and hypervisor jitter on burstable shared-core micro environments. The throughput floor check in perf_test now evaluates the best of three 100k-order trials and sets the baseline floor at 0.40 Mops/s (configurable via OCAML_LOB_THROUGHPUT_FLOOR), preventing false failures when under-provisioned runners experience momentary thread preemption while still reliably guarding against true algorithmic or allocation regressions.
