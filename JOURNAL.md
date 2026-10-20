@@ -4,6 +4,10 @@
 > things happen — retrospectives need this raw material to land.
 > Reverse-chronological; one paragraph max per entry.
 
+## 2026-10-20: Decommission retired VM deploy step and ignore doc paths #ci #decision
+
+The Oracle Cloud Always-Free E2.1.Micro instance in `us-phoenix-1` was retired, causing the `deploy-vm` job in `deploy.yml` to fail on SSH authentication. Disabled the VM deployment job (`if: false`) while keeping GHCR multi-platform container image builds and testing intact. Added `paths-ignore` for markdown, docs, and assets to prevent documentation edits from redundantly triggering release builds.
+
 ## 2026-10-19: Drop the request diagram, redraw the release figure #decision
 
 The request-and-events diagram drew a Caddy and Dream backend whose source was removed in `7a5e8a4`, so the README now describes that design in prose and says where the server went. The release figure is a fan-out and fan-in taken from `deploy.yml`, with the failed-test exit as a dashed line instead of a red box.

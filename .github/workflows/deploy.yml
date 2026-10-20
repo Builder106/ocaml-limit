@@ -30,6 +30,11 @@ name: Deploy
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+      - 'assets/**'
   workflow_dispatch:  # manual trigger from the Actions UI
 
 # Don't run two deploys at the same time — they'd race on the VM.
@@ -193,6 +198,10 @@ jobs:
     name: Deploy to Oracle VM
     needs: merge-manifest
     runs-on: ubuntu-latest
+    # Decommissioned: The Oracle Cloud Always-Free E2.1.Micro instance in us-phoenix-1
+    # was retired. GHCR multi-arch container image publishing remains active on push to main.
+    # Re-enable when a new VM target host and SSH credentials are configured.
+    if: false
     env:
       SSH_HOST: ${{ secrets.SSH_HOST }}
       SSH_USER: ${{ secrets.SSH_USER }}
