@@ -4,9 +4,13 @@
 > things happen — retrospectives need this raw material to land.
 > Reverse-chronological; one paragraph max per entry.
 
+## 2026-10-19: Drop the request diagram, redraw the release figure #decision
+
+The request-and-events diagram drew a Caddy and Dream backend whose source was removed in `7a5e8a4`, so the README now describes that design in prose and says where the server went. The release figure is a fan-out and fan-in taken from `deploy.yml`, with the failed-test exit as a dashed line instead of a red box.
+
 ## 2026-10-15: Redrew request timing and release gates #decision
 
-The README request figure now follows Browser, Caddy, Dream, the book engine, and the trade ring over time. It shows the HTTP response before the later SSE trade message. The release figure makes the test gate, parallel native image builds, digest merge, and host smoke test explicit. Both PNGs retain editable HTML sources.
+The README request figure now shows the static page coming from Vercel, then follows the documented Caddy, Dream, book engine, and trade ring path for SSE and orders. It shows the HTTP response before the later SSE trade message. The release figure matches the checked-in workflow: tests gate two architecture-tagged image builds, a manifest merge, and a host run of `perf_test`. The referenced Dream server source is absent from this checkout, and the workflow has no separate smoke request. Both figures use the terminal's paper and obsidian palettes, sharp borders, cyan transport lines, and red only for test failure. Each light and dark PNG pair comes from one editable HTML source.
 
 ## 2026-10-13: Replaced README Mermaid diagrams #decision
 

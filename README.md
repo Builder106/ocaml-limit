@@ -70,11 +70,9 @@ Full architectural details are in [ONBOARDING.md](ONBOARDING.md).
 
 ## Architecture (user flow)
 
-![OCaml limit order book requests and events](assets/diagrams/request-and-events.png)
+The browser loads the static dashboard from Vercel. Its JavaScript opens an `EventSource` on `/events` and sends orders with `POST /order`, pointing both at the remote host when the page is served from a Vercel hostname. In the documented design, Caddy terminates TLS and proxies both routes to a Dream server, which streams book snapshots every 500 ms and trades as SSE events. `POST /order` returns `200 {"status":"ok"}`, and any fill follows over SSE.
 
-Caddy passes page and SSE requests to Dream. Every 500 ms, Dream reads the matching engine book and sends a SNAPSHOT with depth and spread. The demo bot submits about one order per second; fills enter a trade ring and later reach the browser as TRADE events. `POST /order` returns `200 {"status":"ok"}`, with any fill following on SSE. [Editable HTML source](assets/diagrams/request-and-events.html).
-
-Caddy on the host handles TLS. The OCaml binary inside the container handles everything else. SSE replaced an earlier WebSocket transport after `gluten_lwt`'s WS close path was found to wedge the event loop in a tight retry-on-failed-write cycle (see commit `0c62bc0`).
+That server was removed from this repository in commit `7a5e8a4`. The checked-in Dockerfile builds and runs `perf_test`. SSE replaced an earlier WebSocket transport after `gluten_lwt`'s WS close path was found to wedge the event loop in a tight retry-on-failed-write cycle (see commit `0c62bc0`).
 
 ---
 
@@ -146,9 +144,14 @@ For deploying to your own VM (Oracle Cloud Always-Free walkthrough), see [DEPLOY
 
 [.github/workflows/deploy.yml](.github/workflows/deploy.yml) wires up CI + CD on every push to `main`.
 
-![OCaml limit order book release pipeline](assets/diagrams/deployment-flow.png)
+Both image builds wait for the test job, so a failed test publishes nothing.
 
-A push to `main` runs `dune build` and `dune runtest`. Passing tests gate parallel native amd64 and arm64 image builds; their digests merge into one GHCR manifest. Deployment pulls the release and smoke-tests the host. A failed test stops before any image is published. [Editable HTML source](assets/diagrams/deployment-flow.html).
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/diagrams/deployment-flow-dark.png">
+  <img src="assets/diagrams/deployment-flow.png" alt="The build and test job either fails and stops with no image published, or starts native amd64 and arm64 image builds in parallel. Both feed a manifest merge tagged latest and with the commit SHA, which feeds the deploy job." width="880">
+</picture>
+
+A push to `main` runs `dune build` and `dune runtest`. Passing tests start native amd64 and arm64 image builds in parallel. Their tags merge into one GHCR manifest tagged `latest` and with the commit SHA, and the deploy job pulls `latest` and runs it on the host. [Editable HTML source](assets/diagrams/deployment-flow.html).
 
 **Sequential gating**: both architecture builds have `needs: test`, so a failed test prevents either image from being published. `merge-manifest` waits for both builds, and `deploy-vm` waits for the manifest. The `deploy-prod` concurrency group keeps releases from racing on the host.
 

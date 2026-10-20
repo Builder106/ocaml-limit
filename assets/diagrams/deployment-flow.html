@@ -1,9 +1,172 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>One test gate, two native images</title>
-<style>html,body{margin:0;background:#f9fcfd}body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.figure-scroll{max-width:960px;margin:auto;overflow-x:auto}svg{display:block;width:100%;min-width:960px}@media print{.figure-scroll{overflow-x:visible}svg{min-width:0}}</style></head>
-<body><div class="figure-scroll"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" role="img" aria-labelledby="figure-title figure-desc">
-<title id="figure-title">One test gate, two native images</title><desc id="figure-desc">Push to main starts dune build and dune runtest. Passing tests launch parallel native amd64 and arm64 image builds that push digests to GHCR. Both digests merge into latest and SHA multiarch manifest tags. The host then pulls the image and runs a smoke test. Failed tests stop publication.</desc>
-<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M1 1 L8 5 L1 9" fill="none" stroke="#0785a1" stroke-width="1.8"/></marker></defs>
-<rect width="960" height="600" fill="#f9fcfd"/>
-<text x="40" y="67" font-size="30" fill="#102a30" font-weight="700">One test gate, two native images</text><path d="M40 94 H920" fill="none" stroke="#c8d2d9" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/><text x="40" y="135" font-size="12" fill="#4a7882" font-weight="700">01 · VERIFY</text><path d="M40 147 H250" fill="none" stroke="#bed1d6" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/><text x="267" y="135" font-size="12" fill="#4a7882" font-weight="700">02 · BUILD IN PARALLEL</text><path d="M267 147 H583" fill="none" stroke="#bed1d6" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/><text x="600" y="135" font-size="12" fill="#4a7882" font-weight="700">03 · RELEASE</text><path d="M600 147 H920" fill="none" stroke="#bed1d6" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/><rect x="43" y="185" width="195" height="72" rx="4" fill="#fff" stroke="#9bb8bf" stroke-width="1"/><text x="57" y="212" font-size="16" fill="#102a30" font-weight="700">Push to main</text><text x="57" y="235" font-size="11" fill="#536c73" font-weight="400">starts release workflow</text><rect x="43" y="305" width="195" height="94" rx="3" fill="#dff3f7" stroke="#0785a1" stroke-width="1.5"/><text x="57" y="332" font-size="16" fill="#102a30" font-weight="700">OCaml test gate</text><text x="57" y="355" font-size="12" fill="#3c626b" font-weight="400" font-family="ui-monospace, SFMono-Regular, Consolas, monospace">dune build</text><text x="57" y="375" font-size="12" fill="#3c626b" font-weight="400" font-family="ui-monospace, SFMono-Regular, Consolas, monospace">dune runtest</text><path d="M140 257 V305" fill="none" stroke="#0785a1" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow)"/><rect x="276" y="215" width="294" height="75" rx="4" fill="#fff" stroke="#9bb8bf" stroke-width="1"/><text x="291" y="241" font-size="16" fill="#102a30" font-weight="700">amd64 native build</text><text x="291" y="264" font-size="12" fill="#536c73" font-weight="400">push digest to GHCR</text><rect x="276" y="345" width="294" height="75" rx="4" fill="#fff" stroke="#9bb8bf" stroke-width="1"/><text x="291" y="371" font-size="16" fill="#102a30" font-weight="700">arm64 native build</text><text x="291" y="394" font-size="12" fill="#536c73" font-weight="400">push digest to GHCR</text><path d="M238 331 H257 V251 H276" fill="none" stroke="#0785a1" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow)"/><path d="M238 367 H276" fill="none" stroke="#0785a1" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow)"/><text x="246" y="312" font-size="11" fill="#0785a1" font-weight="700">pass</text><rect x="610" y="275" width="300" height="90" rx="3" fill="#e1f2f6" stroke="#0785a1" stroke-width="1.5"/><text x="626" y="304" font-size="17" fill="#102a30" font-weight="700">Merge manifest</text><text x="626" y="328" font-size="12" fill="#536c73" font-weight="400">both digests → multiarch image</text><text x="626" y="348" font-size="11" fill="#0785a1" font-weight="700">latest + SHA tags</text><path d="M570 251 H590 V298 H610" fill="none" stroke="#0785a1" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow)"/><path d="M570 382 H590 V343 H610" fill="none" stroke="#0785a1" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow)"/><path d="M760 365 V411" fill="none" stroke="#0785a1" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow)"/><rect x="610" y="411" width="300" height="78" rx="4" fill="#fff" stroke="#9bb8bf" stroke-width="1"/><text x="626" y="438" font-size="16" fill="#102a30" font-weight="700">Deploy and smoke test</text><text x="626" y="463" font-size="12" fill="#536c73" font-weight="400">host pulls published image</text><path d="M140 399 V453 H275" fill="none" stroke="#a46046" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="5 5" marker-end="url(#arrow)"/><rect x="275" y="435" width="294" height="54" rx="4" fill="#fff8f5" stroke="#d1aa9d" stroke-width="1"/><text x="291" y="457" font-size="13" fill="#85452f" font-weight="700">Failed tests stop publication</text><text x="291" y="475" font-size="11" fill="#85452f" font-weight="400">no image merge or deploy</text><text x="40" y="556" font-size="12" fill="#536c73" font-weight="400">Publication waits for both architecture digests; deployment follows the manifest merge.</text>
-</svg></div></body></html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OCaml-Limit release pipeline</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>
+:root { color-scheme: light dark; --bg: #ffffff; --ink: #1f2328; --muted: #59636e; --edge: #59636e; --box: #8c959f; --group: #d1d9e0; --groupfill: #f6f8fa; --accent: #0969da; }
+@media (prefers-color-scheme: dark) { :root { --bg: #0d1117; --ink: #f0f6fc; --muted: #9198a1; --edge: #9198a1; --box: #656c76; --group: #3d444d; --groupfill: #151b23; --accent: #4493f8; } }
+html, body { margin: 0; background: var(--bg); }
+main { max-width: 880px; margin: 0 auto; }
+svg { display: block; width: 100%; height: auto; }
+text { font-family: "IBM Plex Sans", system-ui, sans-serif; fill: var(--ink); }
+.mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+.muted { fill: var(--muted); }
+.accent-text { fill: var(--accent); }
+.bg, .halo { fill: var(--bg); }
+.node { fill: var(--bg); stroke-width: 1.25; }
+.node.box { stroke: var(--box); }
+.node.accent { stroke: var(--accent); stroke-width: 2; }
+.group { fill: var(--groupfill); stroke: var(--group); }
+.boundary { fill: none; stroke: var(--box); stroke-dasharray: 6 6; }
+.edge { fill: none; stroke: var(--edge); stroke-width: 1.5; }
+.edge.accent { stroke: var(--accent); stroke-width: 2; }
+.edge.dashed { stroke-dasharray: 6 5; }
+.lifeline { fill: none; stroke: var(--group); stroke-dasharray: 4 5; }
+.tip { fill: var(--edge); }
+.tip-accent { fill: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 273" role="img" aria-labelledby="diagram-title diagram-desc">
+<title id="diagram-title">OCaml-Limit release pipeline</title>
+<desc id="diagram-desc">A push to main runs dune build and dune runtest. If the tests fail, the workflow stops and publishes no image. If they pass, native amd64 and arm64 images build in parallel. A manifest job merges them into one image tagged latest and with the commit SHA, and the deploy job pulls latest and runs it on the host.</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path class="tip" d="M0,0 L10,5 L0,10 Z"/></marker>
+<marker id="arrow-accent" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path class="tip-accent" d="M0,0 L10,5 L0,10 Z"/></marker>
+</defs>
+<rect class="bg" width="880" height="273"/>
+<rect class="node accent" x="16" y="64" width="190" height="67" rx="6"/>
+<text x="30" y="91" font-size="16" font-weight="600">Build and test</text>
+<text x="30" y="112" font-size="14" class="muted mono">dune runtest</text>
+<rect class="node box" x="256" y="16" width="200" height="67" rx="6"/>
+<text x="270" y="43" font-size="16" font-weight="600">amd64 image</text>
+<text x="270" y="64" font-size="14" class="muted">native runner</text>
+<rect class="node box" x="256" y="112" width="200" height="67" rx="6"/>
+<text x="270" y="139" font-size="16" font-weight="600">arm64 image</text>
+<text x="270" y="160" font-size="14" class="muted">native runner</text>
+<rect class="node box" x="506" y="64" width="170" height="67" rx="6"/>
+<text x="520" y="91" font-size="16" font-weight="600">Merge manifest</text>
+<text x="520" y="112" font-size="14" class="muted">latest + SHA tags</text>
+<rect class="node box" x="716" y="64" width="148" height="67" rx="6"/>
+<text x="730" y="91" font-size="16" font-weight="600">Deploy</text>
+<text x="730" y="112" font-size="14" class="muted">pull and run</text>
+<rect class="node box" x="16" y="190" width="190" height="67" rx="6"/>
+<text x="30" y="217" font-size="16" font-weight="600">Stop</text>
+<text x="30" y="238" font-size="14" class="muted">no image published</text>
+<path class="edge" d="M206,97.5 L231,97.5 L231,49.5 L256,49.5" marker-end="url(#arrow)"/>
+<path class="edge" d="M206,97.5 L231,97.5 L231,145.5 L256,145.5" marker-end="url(#arrow)"/>
+<path class="edge" d="M456,49.5 L481,49.5 L481,97.5 L506,97.5" marker-end="url(#arrow)"/>
+<path class="edge" d="M456,145.5 L481,145.5 L481,97.5 L506,97.5" marker-end="url(#arrow)"/>
+<path class="edge" d="M676,97.5 L716,97.5" marker-end="url(#arrow)"/>
+<path class="edge dashed" d="M111,131 L111,190" marker-end="url(#arrow)"/>
+<rect class="halo" x="115" y="152.5" width="47.2" height="19"/>
+<text x="119" y="165.5" font-size="14" class="label">fails</text>
+</svg>
+</main>
+<script type="application/json" id="diagram-spec">
+{
+  "title": "OCaml-Limit release pipeline",
+  "desc": "A push to main runs dune build and dune runtest. If the tests fail, the workflow stops and publishes no image. If they pass, native amd64 and arm64 images build in parallel. A manifest job merges them into one image tagged latest and with the commit SHA, and the deploy job pulls latest and runs it on the host.",
+  "width": 880,
+  "nodes": [
+    {
+      "id": "test",
+      "x": 16,
+      "y": 64,
+      "w": 190,
+      "title": "Build and test",
+      "lines": [
+        {
+          "text": "dune runtest",
+          "mono": true
+        }
+      ],
+      "accent": true
+    },
+    {
+      "id": "amd",
+      "x": 256,
+      "y": 16,
+      "w": 200,
+      "title": "amd64 image",
+      "lines": [
+        "native runner"
+      ]
+    },
+    {
+      "id": "arm",
+      "x": 256,
+      "y": 112,
+      "w": 200,
+      "title": "arm64 image",
+      "lines": [
+        "native runner"
+      ]
+    },
+    {
+      "id": "merge",
+      "x": 506,
+      "y": 64,
+      "w": 170,
+      "title": "Merge manifest",
+      "lines": [
+        "latest + SHA tags"
+      ]
+    },
+    {
+      "id": "deploy",
+      "x": 716,
+      "y": 64,
+      "w": 148,
+      "title": "Deploy",
+      "lines": [
+        "pull and run"
+      ]
+    },
+    {
+      "id": "stop",
+      "x": 16,
+      "y": 190,
+      "w": 190,
+      "title": "Stop",
+      "lines": [
+        "no image published"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "test.r",
+      "to": "amd.l"
+    },
+    {
+      "from": "test.r",
+      "to": "arm.l"
+    },
+    {
+      "from": "amd.r",
+      "to": "merge.l"
+    },
+    {
+      "from": "arm.r",
+      "to": "merge.l"
+    },
+    {
+      "from": "merge.r",
+      "to": "deploy.l"
+    },
+    {
+      "from": "test.b",
+      "to": "stop.t",
+      "label": "fails",
+      "dashed": true
+    }
+  ]
+}
+</script>
+</body>
+</html>
