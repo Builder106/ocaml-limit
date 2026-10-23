@@ -1,7 +1,7 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.png">
   <source media="(prefers-color-scheme: light)" srcset="assets/banner-light.png">
-  <img alt="OCaml LOB: Limit-Order-Book Matching Engine in OCaml 5" src="assets/banner-dark.png">
+  <img alt="OCaml LOB: a limit order book and matching engine in OCaml 5. Beside the name, each price level is drawn as its queue of resting orders, oldest first, with the two oldest asks at the best price filled by a market buy." src="assets/banner-dark.png">
 </picture>
 
 # OCaml LOB
