@@ -1,3 +1,4 @@
 (env
  (_
-  (flags (:standard -alert @deprecated))))
+  (flags
+   (:standard -alert @deprecated))))
