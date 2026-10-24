@@ -4,6 +4,11 @@
 > things happen — retrospectives need this raw material to land.
 > Reverse-chronological; one paragraph max per entry.
 
+## 2026-10-23: Fail CI on deprecated OCaml alerts #ci #decision
+
+The Dune build now treats OCaml's `deprecated` alert as an error in every
+profile, including the coverage build on OCaml 5.2.
+
 ## 2026-10-23: Redraw the README banner as the order book itself #decision
 
 The old banner was generic dashboard chrome: a status bar with a LIVE dot, uppercase labels over three neon stat tiles, grid lines too faint to see, and a duckdns URL that died with the VM. Its PNGs had also drifted from the SVG source. The new one draws what this engine actually does. Each price level is its FIFO queue of resting orders, oldest next to the price, and a market buy has filled the two oldest asks at the best price. Prices are integer ticks written as OCaml literals, and the first bid is the README's `~price:1_502_500 ~qty:100` example order. The figures went into one plain sentence. Both themes now use GitHub-like neutrals and muted red and green in place of pure `#ff0000`/`#00ff00`. They're rendered at 2x in headless Chromium so the IBM Plex web fonts load. The social card and favicon keep the terminal look for now.
