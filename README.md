@@ -14,7 +14,7 @@
 [![Chart.js](https://img.shields.io/badge/Chart.js-FF6384?logo=chartdotjs&logoColor=white)](https://www.chartjs.org/)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Playwright](https://img.shields.io/badge/Playwright-2EAD33?logo=playwright&logoColor=white)](https://playwright.dev/)
-[![Caddy](https://img.shields.io/badge/Caddy-1F88C0?logo=caddy&logoColor=white)](https://caddyserver.com/)
+[![Tailscale](https://img.shields.io/badge/Tailscale_Funnel-242424?logo=tailscale&logoColor=white)](https://tailscale.com/kb/1223/funnel)
 [![Oracle Cloud](https://img.shields.io/badge/Oracle_Cloud-F80000?logo=oracle&logoColor=white)](https://www.oracle.com/cloud/)
 [![Demo](https://img.shields.io/badge/demo-live-success.svg)](https://ocaml-lob.vercel.app/)
 
@@ -26,7 +26,7 @@ At modern stock exchanges, millions of buy and sell orders arrive every second. 
 
 The matching hot path is allocation-free per submit (bench-validated), achieves ~18 million orders/sec in clean performance benchmarks, and holds p99 latency under 1 microsecond.
 
-🟢 **Live demo:** [ocaml-lob.vercel.app](https://ocaml-lob.vercel.app/) (dashboard hosted on Vercel, matching engine running on an Oracle Cloud VM). Click the info icon in the top right for an in-app tour.
+🟢 **Live demo:** [ocaml-lob.vercel.app](https://ocaml-lob.vercel.app/). The page is static on Vercel and the engine runs in a container behind a Tailscale Funnel. Each price row shows its queue of resting orders, and orders you send join the same book. Press `3` for a short explanation.
 
 ---
 
@@ -70,9 +70,11 @@ Full architectural details are in [ONBOARDING.md](ONBOARDING.md).
 
 ## Architecture (user flow)
 
-The browser loads the static dashboard from Vercel. Its JavaScript opens an `EventSource` on `/events` and sends orders with `POST /order`, pointing both at the remote host when the page is served from a Vercel hostname. In the documented design, Caddy terminates TLS and proxies both routes to a Dream server, which streams book snapshots every 500 ms and trades as SSE events. `POST /order` returns `200 {"status":"ok"}`, and any fill follows over SSE.
+The browser loads the static dashboard from Vercel. Its JavaScript opens an `EventSource` on `/events` and sends orders with `POST /order`, pointing both at the Funnel host when the page is served from a Vercel hostname. Tailscale terminates TLS and proxies both routes to the Dream server in `bin/server.ml`. Every 500 ms the server sends a `BOOK` event with each level's FIFO queue (order id and remaining size, oldest first) and a `STATS` event with counters, then any `TRADE` events since the last frame. `POST /order` takes `{"side": "BUY" | "SELL", "price": <ticks>, "qty": <int>}` and answers with the order id and how much filled on arrival; later fills follow over SSE.
 
-That server was removed from this repository in commit `7a5e8a4`. The checked-in Dockerfile builds and runs `perf_test`. SSE replaced an earlier WebSocket transport after `gluten_lwt`'s WS close path was found to wedge the event loop in a tight retry-on-failed-write cycle (see commit `0c62bc0`).
+At startup the server times the `perf_test` workload on its own host and reports that throughput and allocation figure to the page. A demo bot keeps the book moving on a 50-tick ($0.0050) grid. Visitor orders must sit on that grid within 1,000 ticks of the mid, and the bot cancels the oldest order at the farthest level once a side holds more than 120 orders, so a long-running demo can't fill the price index or the node pool.
+
+The Docker image runs the server by default and also ships `./perf_test`. SSE replaced an earlier WebSocket transport after `gluten_lwt`'s WS close path was found to wedge the event loop in a tight retry-on-failed-write cycle (see commit `0c62bc0`).
 
 ---
 
@@ -130,8 +132,6 @@ opam install -y dream yojson lwt_ppx        # server-only deps
 dune build                                   # compile everything
 dune runtest                                 # 11 tests across matching + perf
 dune exec bin/server.exe                     # serves on localhost:8080
-dune exec bin/bench.exe                      # 1M-order benchmark with allocation report
-dune exec bin/diag.exe                       # bytes/order at varying scales
 ```
 
 Open `http://localhost:8080/`. The demo bot starts automatically.
@@ -196,16 +196,13 @@ ocaml_lob/
 │   ├── stats.ml                   nanosecond latency tracker
 │   └── messaging.ml               OCaml 5 atomic MPSC queue
 ├── bin/
-│   ├── server.ml                  Dream HTTP: GET /events (SSE), POST /order, demo bot
-│   ├── bench.ml                   1M-order benchmark, prints throughput + alloc
-│   └── diag.ml                    raw bytes/order measurement via Gc.minor_words
+│   └── server.ml                  Dream HTTP: GET /events (SSE), POST /order, demo bot
 ├── test/
 │   ├── test_engine.ml             matching + messaging cases
 │   └── perf_test.ml               regression guards
-├── front/                         dashboard (vanilla JS + Tailwind CDN + Chart.js)
+├── front/                         dashboard (one HTML file and one script, no build step)
 ├── assets/                        repo-only banner artwork
-├── Dockerfile                     multi-stage: ocaml/opam → ubuntu:22.04
-├── DEPLOY.md                      Oracle Cloud E2.1.Micro walkthrough
+├── Dockerfile                     multi-stage: ocaml/opam → ubuntu:26.04
 ├── ONBOARDING.md                  architecture deep-dive for new contributors
 └── .github/workflows/deploy.yml   CI (test) + CD (build + ship)
 ```
