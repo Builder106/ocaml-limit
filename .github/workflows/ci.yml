@@ -61,7 +61,7 @@ jobs:
           opam-pin: false
 
       - name: Install deps
-        run: opam install --yes dune alcotest
+        run: opam install --yes dune alcotest dream yojson lwt_ppx
 
       - name: Type check
         run: opam exec -- dune build @check

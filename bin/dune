@@ -1,0 +1,7 @@
+(executable
+ (name server)
+ (libraries ocaml_lob dream yojson unix)
+ (preprocess
+  (pps lwt_ppx))
+ (ocamlopt_flags
+  (:standard -O3 -unbox-closures)))

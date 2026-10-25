@@ -20,8 +20,3 @@ playwright-report/
 e2e/
 ONBOARDING.md
 assets/
-
-# Note: bin/diag.ml is left in the build context — bin/dune references
-# it, so excluding it would break dune's build planning. We only build
-# `bin/server.exe` explicitly, so diag.exe isn't compiled and doesn't
-# end up in the runtime image.

@@ -219,5 +219,5 @@ jobs:
           ssh -i ~/.ssh/deploy_key ${SSH_USER}@${SSH_HOST} << 'EOF'
             set -e
             docker pull ghcr.io/builder106/ocaml-limit:latest
-            docker run --rm ghcr.io/builder106/ocaml-limit:latest
+            docker run --rm ghcr.io/builder106/ocaml-limit:latest ./perf_test
           EOF
