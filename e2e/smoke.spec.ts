@@ -1,40 +1,68 @@
 import { test, expect } from '@playwright/test';
 
-test('seeded local SSE snapshot and order boundary', async ({ page }) => {
+type Feed = { push(msg: unknown): void };
+
+test('seeded SSE book, fills, and order ticket', async ({ page }) => {
+  const problems: string[] = [];
+  page.on('console', (msg) => {
+    if (msg.type() === 'warning' || msg.type() === 'error') problems.push(msg.text());
+  });
+  page.on('pageerror', (err) => problems.push(err.message));
+
   await page.addInitScript(() => {
     class SeededEventSource {
-      static readonly OPEN = 1;
-      readonly readyState = SeededEventSource.OPEN;
-      onopen: (() => void) | null = null;
+      static readonly CLOSED = 2;
+      readyState = 1;
       onmessage: ((event: MessageEvent<string>) => void) | null = null;
       onerror: (() => void) | null = null;
       constructor(readonly url: string) {
-        queueMicrotask(() => {
-          this.onopen?.();
-          this.onmessage?.({ data: JSON.stringify({ type: 'SNAPSHOT', asks: [{ price: 150.5, size: 4, totalSize: 4 }], bids: [{ price: 149.5, size: 7, totalSize: 7 }] }) } as MessageEvent<string>);
-          this.onmessage?.({ data: JSON.stringify({ type: 'STATS', latency: '0.50', throughput: '1.00M' }) } as MessageEvent<string>);
-        });
+        (window as unknown as { feed: Feed }).feed = {
+          push: (msg: unknown) => this.onmessage?.({ data: JSON.stringify(msg) } as MessageEvent<string>),
+        };
       }
       close(): void {}
     }
-    class SeededChart {
-      data = { datasets: [{ data: [] }, { data: [] }] };
-      options = { scales: { x: { grid: {}, ticks: {} }, y: { grid: {}, ticks: {} } } };
-      update(): void {}
-    }
     Object.defineProperty(window, 'EventSource', { value: SeededEventSource });
-    Object.defineProperty(window, 'Chart', { value: SeededChart });
-    localStorage.setItem('onboardingSeen', '1');
   });
-  const order = page.waitForRequest((request) => request.url().endsWith('/order'));
-  await page.route('**/order', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }));
+  await page.route('**/order', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ status: 'ok', id: 7, filled: 0, resting: 100 }),
+    }),
+  );
   await page.goto('/');
-  await expect(page.getByText('LIVE', { exact: true })).toBeVisible();
-  await expect(page.locator('#ask-book .data-row')).toHaveCount(1);
-  await expect(page.locator('#bid-book .data-row')).toHaveCount(1);
-  await expect(page.locator('#spread')).toHaveText('1.00');
-  await expect(page.locator('#stat-throughput')).toHaveText('1.00M orders/s');
-  await page.getByRole('button', { name: 'LMT BUY' }).click();
-  expect((await order).method()).toBe('POST');
-  await expect(page.locator('#risk-log')).toContainText('Placing BUY order');
+
+  const push = (msg: unknown) => page.evaluate((m) => (window as unknown as { feed: Feed }).feed.push(m), msg);
+  const book = (bidOrders: [number, number][]) => ({
+    type: 'BOOK',
+    asks: [{ price: 1_500_100, qty: 4, count: 1, orders: [[1_000_000_001, 4]] }],
+    bids: [{ price: 1_499_900, qty: bidOrders.reduce((s, [, q]) => s + q, 0), count: bidOrders.length, orders: bidOrders }],
+  });
+
+  await push(book([[1_000_000_002, 7]]));
+  await push({ type: 'STATS', orders: 12, trades: 3, volume: 90, rejected: 0, last: 1_500_000, viewers: 1, host_mops: 21.4, host_bytes_per_order: 0.03 });
+  await push({ type: 'TRADE', side: 'BUY', price: 1_500_100, qty: 5, passive: 1_000_000_001, active: 1_000_000_003, t: 1_700_000_000 });
+
+  await expect(page.locator('#feed')).toHaveText('Live');
+  await expect(page.locator('#ladder .level')).toHaveCount(21);
+  await expect(page.locator('#ladder .level[data-side="ask"]')).toHaveCount(1);
+  await expect(page.locator('#ladder .level[data-side="bid"] .ord')).toHaveCount(1);
+  await expect(page.locator('#ladder .level.inside')).toHaveCount(3);
+  await expect(page.locator('#q-spread')).toHaveText('0.0200');
+  await expect(page.locator('#h-mops')).toHaveText('21.4M orders/s');
+  await expect(page.locator('#tape tr')).toHaveCount(1);
+  await expect(page.locator('#price')).toHaveValue('150.0000');
+
+  const order = page.waitForRequest((request) => request.url().endsWith('/order'));
+  await page.getByRole('button', { name: 'Send <GO>' }).click();
+  const sent = await order;
+  expect(sent.method()).toBe('POST');
+  expect(sent.postDataJSON()).toEqual({ side: 'BUY', price: 1_500_000, qty: 100 });
+
+  await push(book([[1_000_000_002, 7], [7, 100]]));
+  await expect(page.locator('#ticket-status')).toContainText('2nd in line at 149.9900');
+  await expect(page.locator('#ladder .ord.mine')).toHaveCount(1);
+
+  expect(problems).toEqual([]);
 });

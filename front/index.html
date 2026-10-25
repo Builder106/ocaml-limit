@@ -1,441 +1,440 @@
-<!--
-AESTHETIC_DNA
-- Core: theme-aware via CSS variables (dark = terminal obsidian, light = paper white)
-- Primary Accents: bid green / ask red / accent cyan — both palettes share the semantic
-  meaning but use stronger saturation in dark and lower in light for legibility
-- Typography: IBM Plex Mono for Data, Inter for UI
-- Effects: Sharp borders, High Density, Zero rounded corners
-
-  Theme is set by toggling the `dark` class on <html>. Persistence + system-
-  preference detection happens in the inline boot script below (head, runs
-  before render to avoid FOUC).
--->
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <title>OCaml LOB — Matching Engine</title>
-   <meta name="description" content="Limit-Order-Book matching engine in OCaml 5 — ~18 M orders/sec, p99 under 1μs, zero bytes allocated per submit (bench-validated). Live demo with a Bloomberg-terminal dashboard.">
-   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+   <title>OCaml LOB</title>
+   <meta name="description" content="A live limit order book and matching engine in OCaml 5. Every price level is drawn as its queue of resting orders, and your orders join the same book.">
+   <meta name="color-scheme" content="dark">
+   <meta name="theme-color" content="#000000">
+   <link rel="icon" type="image/svg+xml" href="favicon.svg">
+   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
    <link rel="canonical" href="https://ocaml-lob.vercel.app/">
 
-   <!-- Open Graph (Slack / iMessage / Discord / LinkedIn / Facebook). -->
    <meta property="og:type"        content="website">
    <meta property="og:url"         content="https://ocaml-lob.vercel.app/">
-   <meta property="og:title"       content="OCaml LOB — Matching Engine">
-   <meta property="og:description" content="Zero-allocation limit-order-book matching engine in OCaml 5. ~18 M orders/sec, p99 under 1μs, 0 bytes per submit.">
+   <meta property="og:title"       content="OCaml LOB">
+   <meta property="og:description" content="A live limit order book in OCaml 5. Watch orders queue at each price and fill oldest first.">
    <meta property="og:image"       content="https://ocaml-lob.vercel.app/social-preview.png">
    <meta property="og:image:width"  content="1200">
    <meta property="og:image:height" content="630">
-   <meta property="og:image:alt"   content="OCaml LOB — terminal-style card showing 18M orders/sec throughput, sub-microsecond p99 latency, zero bytes-per-order allocation.">
-
-   <!-- Twitter Card. summary_large_image gives the full-width preview. -->
+   <meta property="og:image:alt"   content="OCaml LOB terminal card with throughput, p99 latency, and bytes per order.">
    <meta name="twitter:card"        content="summary_large_image">
-   <meta name="twitter:title"       content="OCaml LOB — Matching Engine">
-   <meta name="twitter:description" content="Zero-allocation limit-order-book matching engine in OCaml 5. ~18 M orders/sec, p99 under 1μs.">
+   <meta name="twitter:title"       content="OCaml LOB">
+   <meta name="twitter:description" content="A live limit order book in OCaml 5. Watch orders queue at each price and fill oldest first.">
    <meta name="twitter:image"       content="https://ocaml-lob.vercel.app/social-preview.png">
-   <!-- Theme boot: three modes — 'system' (default, follows OS), 'light',
-        'dark'. Sets `data-theme` (for the icon swap) and the `dark` class
-        on <html> before any paint so the page never flashes in the wrong
-        palette. -->
-   <script>
-      (function () {
-         const mode = localStorage.getItem('theme') || 'system';
-         const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-         const isDark = mode === 'dark' || (mode === 'system' && systemDark);
-         document.documentElement.setAttribute('data-theme', mode);
-         document.documentElement.classList.toggle('dark', isDark);
-      })();
-   </script>
-   <!-- Fonts -->
+
    <link rel="preconnect" href="https://fonts.googleapis.com">
    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-   <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
-      rel="stylesheet">
-   <!-- Scripts -->
-   <script src="https://cdn.tailwindcss.com"></script>
-   <script src="https://unpkg.com/@phosphor-icons/web"></script>
-   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-   <script>
-      // Colors are stored as space-separated RGB triplets so Tailwind's
-      // `<alpha-value>` slash syntax (e.g. `bg-terminal-cyan/30`) still
-      // works through CSS variables. See :root / .dark blocks in <style>.
-      tailwind.config = {
-         darkMode: 'class',
-         theme: {
-            extend: {
-               fontFamily: {
-                  sans: ['Inter', 'sans-serif'],
-                  mono: ['IBM Plex Mono', 'monospace'],
-               },
-               colors: {
-                  terminal: {
-                     bg:     'rgb(var(--bg-page) / <alpha-value>)',
-                     panel:  'rgb(var(--bg-panel) / <alpha-value>)',
-                     border: 'rgb(var(--border) / <alpha-value>)',
-                     header: 'rgb(var(--bg-header) / <alpha-value>)',
-                     cyan:   'rgb(var(--accent-cyan) / <alpha-value>)',
-                     green:  'rgb(var(--accent-green) / <alpha-value>)',
-                     red:    'rgb(var(--accent-red) / <alpha-value>)',
-                     amber:  'rgb(var(--accent-amber) / <alpha-value>)',
-                  },
-                  // Text foreground — three weights, theme-aware.
-                  fg:        'rgb(var(--fg) / <alpha-value>)',
-                  'fg-mute': 'rgb(var(--fg-mute) / <alpha-value>)',
-                  'fg-dim':  'rgb(var(--fg-dim) / <alpha-value>)',
-               }
-            }
-         }
-      }
-   </script>
+   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
    <style>
-      /* ───── Light palette (default). ──────────────────────────────── */
+      /* A Bloomberg-style function screen: black ground, amber labels,
+         white figures, a yellow GO key. The book is the screen; each
+         price row is its FIFO queue of resting orders. */
       :root {
-         --bg-page:      250 250 250;
-         --bg-panel:     255 255 255;
-         --bg-header:    244 244 245;
-         --border:       228 228 231;
-         --row-hover:    243 244 246;
-         --fg:            31  41  55;   /* gray-800 */
-         --fg-mute:     107 114 128;    /* gray-500 */
-         --fg-dim:      156 163 175;    /* gray-400 */
-         --accent-cyan:   8 145 178;    /* cyan-600 */
-         --accent-green: 22 163  74;    /* green-600 */
-         --accent-red:  220  38  38;    /* red-600 */
-         --accent-amber: 217 119   6;   /* amber-600 */
-         --heatmap-ask: 220  38  38;    /* used with low alpha */
-         --heatmap-bid:  22 163  74;
-         --heatmap-alpha: 0.06;
+         --bg: #000;
+         --raise: #0e1014;
+         --field: #1a1d23;
+         --rule: #2a2e36;
+         --amber: #ffa52b;
+         --amber-deep: #c9771a;
+         --go: #f4d03f;
+         --text: #f2f2f2;
+         --muted: #a3a9b1;
+         --dim: #868c94;
+         --bid: #3ccf7e;
+         --bid-block: #2a9d5c;
+         --ask: #ff6257;
+         --ask-block: #cf4338;
+         /* 20 price rows share the height left after the chrome. */
+         --row: clamp(26px, calc((100dvh - 236px) / 20), 40px);
+         --sans: 'IBM Plex Sans Condensed', 'Arial Narrow', sans-serif;
+         --mono: 'IBM Plex Mono', ui-monospace, monospace;
+         color-scheme: dark;
       }
 
-      /* ───── Dark palette (Bloomberg-terminal aesthetic, original). ── */
-      html.dark {
-         --bg-page:        0   0   0;
-         --bg-panel:      10  10  10;
-         --bg-header:     10  10  10;
-         --border:        26  26  26;
-         --row-hover:     17  17  17;
-         --fg:           209 213 219;   /* gray-300 */
-         --fg-mute:      107 114 128;   /* gray-500 */
-         --fg-dim:        82  82  91;   /* gray-700 */
-         --accent-cyan:    0 240 255;
-         --accent-green:   0 255   0;
-         --accent-red:   255   0   0;
-         --accent-amber: 255 176   0;
-         --heatmap-ask:  153  27  27;
-         --heatmap-bid:   21 128  61;
-         --heatmap-alpha: 0.4;
-      }
-
+      * { box-sizing: border-box; }
+      html, body { margin: 0; }
       body {
-         background-color: rgb(var(--bg-page));
-         color: rgb(var(--fg));
+         background: var(--bg);
+         color: var(--text);
+         font: 500 14px/1.3 var(--sans);
+         font-variant-numeric: tabular-nums;
+         min-height: 100dvh;
+         display: flex;
+         flex-direction: column;
       }
+      button, input { font: inherit; color: inherit; }
+      a { color: inherit; }
+      :focus-visible { outline: 2px solid var(--go); outline-offset: 1px; }
 
-      .no-scrollbar::-webkit-scrollbar { display: none; }
-
-      .panel-header {
-         background: rgb(var(--bg-header));
-         border-bottom: 1px solid rgb(var(--border));
-         color: rgb(var(--fg-mute));
-         font-size: 10px;
+      /* ── Command line: security, ticket, GO, feed state ─────────── */
+      .cmd {
+         display: flex;
+         flex-wrap: wrap;
+         align-items: stretch;
+         gap: 0 2px;
+         background: var(--raise);
+         border-bottom: 1px solid var(--rule);
+         min-height: 40px;
+      }
+      .sec {
+         margin: 0;
+         display: flex;
+         align-items: center;
+         gap: 10px;
+         padding: 0 14px;
+         background: var(--amber);
+         color: #000;
+         font-size: 17px;
+         font-weight: 700;
+         letter-spacing: 0.02em;
+         white-space: nowrap;
+      }
+      .sec small { font-size: 13px; font-weight: 500; }
+      .ticket {
+         display: flex;
+         align-items: center;
+         gap: 8px;
+         padding: 4px 10px;
+         flex-wrap: wrap;
+      }
+      .sides { display: flex; margin: 0; padding: 0; border: 1px solid var(--rule); }
+      .sides label { position: relative; }
+      .sides input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+      .sides span {
+         display: block;
+         padding: 5px 12px;
          font-weight: 600;
-         text-transform: uppercase;
-         letter-spacing: 0.05em;
+         color: var(--muted);
       }
+      .sides input:checked + span.buy { background: var(--bid-block); color: #000; }
+      .sides input:checked + span.sell { background: var(--ask-block); color: #000; }
+      .sides input:focus-visible + span { outline: 2px solid var(--go); outline-offset: -2px; }
+      .field { display: flex; align-items: center; gap: 6px; color: var(--amber); font-weight: 600; }
+      .field input {
+         width: 7.5ch;
+         padding: 5px 8px;
+         background: var(--field);
+         border: 1px solid var(--rule);
+         color: var(--text);
+         text-align: right;
+         font-variant-numeric: tabular-nums;
+      }
+      .field input#price { width: 10ch; }
+      .field input:focus { border-color: var(--amber); outline: none; }
+      .go {
+         padding: 5px 12px;
+         background: var(--go);
+         color: #000;
+         border: 0;
+         font-weight: 700;
+         cursor: pointer;
+      }
+      .go:hover { background: #fff; }
+      .go:disabled { background: var(--field); color: var(--dim); cursor: not-allowed; }
+      #ticket-status { color: var(--muted); min-width: 0; }
+      #ticket-status .mono { color: var(--text); }
+      .feed {
+         margin-left: auto;
+         display: flex;
+         align-items: center;
+         gap: 14px;
+         padding: 0 14px;
+         color: var(--muted);
+         white-space: nowrap;
+      }
+      #feed { font-weight: 700; }
+      #feed[data-state="live"] { color: var(--bid); }
+      #feed[data-state="retry"] { color: var(--amber); }
+      #feed[data-state="down"] { color: var(--ask); }
 
-      .data-row:hover { background: rgb(var(--row-hover)); }
-
-      .heatmap-ask { background: rgb(var(--heatmap-ask) / var(--heatmap-alpha)); }
-      .heatmap-bid { background: rgb(var(--heatmap-bid) / var(--heatmap-alpha)); }
-
-      /* Theme-toggle icon — show the icon for the CURRENT mode. Click
-         cycles to the next one (system → light → dark → …). */
-      .theme-toggle .icon-light,
-      .theme-toggle .icon-dark,
-      .theme-toggle .icon-system { display: none; }
-      html[data-theme="light"]  .theme-toggle .icon-light  { display: inline; }
-      html[data-theme="dark"]   .theme-toggle .icon-dark   { display: inline; }
-      html[data-theme="system"] .theme-toggle .icon-system { display: inline; }
-
-      @keyframes pulse-thin {
-         0%, 100% { opacity: 1; }
-         50%      { opacity: 0.5; }
+      /* ── Numbered function menu ─────────────────────────────────── */
+      .menu {
+         display: flex;
+         flex-wrap: wrap;
+         align-items: center;
+         gap: 0 4px;
+         padding: 3px 6px;
+         border-bottom: 1px solid var(--rule);
       }
-      .animate-pulse-thin { animation: pulse-thin 2s infinite; }
-
-      /* Onboarding modal. Sharp borders + monospace match the terminal
-         aesthetic; theme-aware via CSS vars. */
-      #onboarding-modal {
-         position: fixed; inset: 0; z-index: 50;
-         display: none; align-items: center; justify-content: center;
-      }
-      #onboarding-modal.is-open { display: flex; }
-      #onboarding-modal .backdrop {
-         position: absolute; inset: 0;
-         background: rgb(0 0 0 / 0.65);
-         backdrop-filter: blur(2px);
-      }
-      #onboarding-modal .card {
-         position: relative;
-         max-width: 640px; width: calc(100% - 2rem);
-         max-height: calc(100vh - 4rem); overflow-y: auto;
-         background: rgb(var(--bg-panel));
-         border: 1px solid rgb(var(--border));
-         padding: 32px 36px;
-         box-shadow: 0 20px 60px rgb(0 0 0 / 0.4);
-      }
-      #onboarding-modal .card h1 {
-         color: rgb(var(--accent-cyan));
-         font-size: 18px; font-weight: 700; letter-spacing: 0.05em;
-         text-transform: uppercase;
-         margin-bottom: 6px;
-      }
-      #onboarding-modal .card .tagline {
-         color: rgb(var(--fg)); font-size: 13px; font-weight: 600;
-         margin-bottom: 18px;
-      }
-      #onboarding-modal .card .pitch {
-         color: rgb(var(--fg-mute)); font-size: 12px; line-height: 1.6;
-         margin-bottom: 22px;
-      }
-      #onboarding-modal .card .pitch .num {
-         color: rgb(var(--accent-green)); font-weight: 600;
-      }
-      #onboarding-modal .card h2 {
-         color: rgb(var(--fg-mute));
-         font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
-         text-transform: uppercase;
-         margin: 0 0 10px;
-         padding-bottom: 6px;
-         border-bottom: 1px solid rgb(var(--border));
-      }
-      #onboarding-modal .card ul {
-         list-style: none; padding: 0; margin: 0 0 24px;
-         font-size: 12px; line-height: 1.7;
-      }
-      #onboarding-modal .card ul li { color: rgb(var(--fg-mute)); }
-      #onboarding-modal .card ul li b {
-         color: rgb(var(--fg)); font-weight: 600;
-         display: inline-block; min-width: 130px;
-      }
-      #onboarding-modal .card .row {
-         display: flex; gap: 12px; justify-content: flex-end;
-      }
-      #onboarding-modal .card .btn {
-         font-family: inherit; font-size: 11px; font-weight: 700;
-         text-transform: uppercase; letter-spacing: 0.05em;
-         padding: 9px 18px; border: 1px solid rgb(var(--border));
-         background: transparent; color: rgb(var(--fg));
-         cursor: pointer; transition: all 0.15s;
-         text-decoration: none; display: inline-flex; align-items: center;
-      }
-      #onboarding-modal .card .btn:hover {
-         border-color: rgb(var(--accent-cyan));
-         color: rgb(var(--accent-cyan));
-      }
-      #onboarding-modal .card .btn.primary {
-         background: rgb(var(--accent-cyan));
-         border-color: rgb(var(--accent-cyan));
-         color: rgb(var(--bg-panel));
-      }
-      #onboarding-modal .card .btn.primary:hover { opacity: 0.85; color: rgb(var(--bg-panel)); }
-      #onboarding-modal .card .close {
-         position: absolute; top: 10px; right: 12px;
-         background: none; border: none; cursor: pointer;
-         color: rgb(var(--fg-mute)); font-size: 18px; line-height: 1;
+      .menu button, .menu a {
+         background: none;
+         border: 0;
          padding: 4px 8px;
+         cursor: pointer;
+         text-decoration: none;
+         color: var(--text);
       }
-      #onboarding-modal .card .close:hover { color: rgb(var(--accent-cyan)); }
+      .menu b { color: var(--amber); font-weight: 700; }
+      .menu button:hover, .menu a:hover { background: var(--amber); color: #000; }
+      .menu button:hover b, .menu a:hover b { color: #000; }
+      .menu p { margin: 0 0 0 auto; padding: 4px 8px; color: var(--muted); }
+
+      /* ── Screen layout ──────────────────────────────────────────── */
+      .screen {
+         flex: 1;
+         display: grid;
+         grid-template-columns: minmax(0, 1fr) 340px;
+         min-height: 0;
+      }
+      h2 {
+         margin: 0;
+         padding: 8px 14px 6px;
+         color: var(--amber);
+         font-size: 15px;
+         font-weight: 700;
+      }
+
+      /* ── The queue book ─────────────────────────────────────────── */
+      .book {
+         display: flex;
+         flex-direction: column;
+         border-right: 1px solid var(--rule);
+         min-width: 0;
+      }
+      .cols, .level {
+         display: grid;
+         grid-template-columns: 96px 70px 42px minmax(0, 1fr);
+         align-items: center;
+         column-gap: 12px;
+         padding: 0 14px;
+      }
+      .cols {
+         color: var(--amber);
+         font-weight: 600;
+         font-size: 13px;
+         padding-bottom: 4px;
+         border-bottom: 1px solid var(--rule);
+      }
+      .cols span:nth-child(2), .cols span:nth-child(3) { text-align: right; }
+      .levels { list-style: none; margin: 0; padding: 0; }
+      .level { height: var(--row); }
+      .level:hover { background: var(--raise); }
+      .px {
+         background: none;
+         border: 0;
+         padding: 0;
+         text-align: left;
+         font-weight: 600;
+         font-size: 15px;
+         cursor: pointer;
+      }
+      .px { color: var(--dim); }
+      .level[data-side="ask"] .px { color: var(--ask); }
+      .level[data-side="bid"] .px { color: var(--bid); }
+      .level.inside { background: var(--raise); }
+      #book-state { margin-left: 8px; color: var(--ask); font-weight: 500; }
+      .px:hover { text-decoration: underline; }
+      .qty, .count { text-align: right; }
+      .count { color: var(--muted); }
+      .queue {
+         display: flex;
+         gap: 4px;
+         height: 55%;
+         max-height: 18px;
+         overflow: hidden;
+      }
+      .ord {
+         flex: 0 0 auto;
+         min-width: 3px;
+         height: 100%;
+         transform-origin: left;
+         transition: width 280ms ease-out, opacity 280ms ease-out, background-color 160ms;
+         animation: ord-in 320ms ease-out;
+      }
+      @keyframes ord-in { from { opacity: 0; transform: scaleX(0.3); } }
+      .level[data-side="ask"] .ord { background: var(--ask-block); }
+      .level[data-side="bid"] .ord { background: var(--bid-block); }
+      .ord.mine { box-shadow: inset 0 0 0 2px #fff; background: transparent !important; }
+      .ord.hit { background: #fff !important; }
+      .ord.gone { width: 0 !important; min-width: 0; opacity: 0; }
+
+      .book .note {
+         margin: auto 0 0;
+         padding: 10px 14px;
+         color: var(--muted);
+         border-top: 1px solid var(--rule);
+      }
+      .book.stale .levels { opacity: 0.4; }
+
+      /* ── Side column ────────────────────────────────────────────── */
+      .side { display: flex; flex-direction: column; min-height: 0; }
+      .side section { border-bottom: 1px solid var(--rule); }
+      dl {
+         display: grid;
+         grid-template-columns: auto 1fr;
+         gap: 3px 12px;
+         margin: 0;
+         padding: 0 14px 10px;
+      }
+      dt { color: var(--amber); }
+      dd { margin: 0; text-align: right; font-weight: 600; }
+      dd .b { color: var(--bid); }
+      dd .a { color: var(--ask); }
+      .host p { margin: 0; padding: 0 14px 10px; color: var(--muted); font-size: 13px; }
+      .tape { flex: 1; min-height: 0; display: flex; flex-direction: column; border-bottom: 0 !important; }
+      .tape-scroll { overflow-y: auto; min-height: 0; flex: 1; }
+      table { width: 100%; border-collapse: collapse; }
+      th {
+         position: sticky;
+         top: 0;
+         background: var(--bg);
+         color: var(--amber);
+         font-weight: 600;
+         font-size: 13px;
+         text-align: right;
+         padding: 2px 14px 4px 0;
+      }
+      td { text-align: right; padding: 2px 14px 2px 0; }
+      th:first-child, td:first-child { text-align: left; padding-left: 14px; }
+      td.t { color: var(--muted); }
+      td.buy { color: var(--bid); }
+      td.sell { color: var(--ask); }
+      tr.fresh td { background: var(--field); }
+      .mono { font-family: var(--mono); font-size: 0.92em; }
+
+      /* ── About dialog ───────────────────────────────────────────── */
+      dialog {
+         max-width: 560px;
+         width: calc(100% - 32px);
+         padding: 0;
+         background: var(--raise);
+         color: var(--text);
+         border: 1px solid var(--amber-deep);
+      }
+      dialog::backdrop { background: rgb(0 0 0 / 0.7); }
+      dialog h2 { padding: 14px 18px 4px; font-size: 18px; }
+      dialog .body { padding: 0 18px 4px; color: var(--muted); line-height: 1.5; font-size: 15px; }
+      dialog .body p { margin: 0 0 10px; }
+      dialog .body strong { color: var(--text); font-weight: 600; }
+      dialog .row { display: flex; gap: 8px; justify-content: flex-end; padding: 8px 18px 16px; }
+      dialog .row a, dialog .row button {
+         padding: 6px 12px;
+         border: 1px solid var(--rule);
+         background: none;
+         text-decoration: none;
+         cursor: pointer;
+         font-weight: 600;
+      }
+      dialog .row button { background: var(--go); color: #000; border-color: var(--go); }
+
+      .sr-only {
+         position: absolute; width: 1px; height: 1px; overflow: hidden;
+         clip: rect(0 0 0 0); white-space: nowrap;
+      }
+
+      @media (min-width: 1024px) {
+         body { height: 100dvh; overflow: hidden; }
+         .screen { overflow: hidden; }
+      }
+      @media (max-width: 1023px) {
+         .screen { grid-template-columns: minmax(0, 1fr); }
+         .book { border-right: 0; border-bottom: 1px solid var(--rule); }
+         .tape-scroll { max-height: 420px; }
+         .feed { margin-left: 0; padding: 6px 14px; }
+      }
+      @media (max-width: 640px) {
+         .cols, .level { grid-template-columns: 84px 56px minmax(0, 1fr); column-gap: 8px; padding: 0 12px; }
+         .cols span:nth-child(3), .level .count { display: none; }
+         .sec { width: 100%; padding: 8px 12px; }
+         .ticket { padding: 6px 12px; }
+         .menu p { display: none; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+         .ord { transition: none; animation: none; }
+      }
    </style>
 </head>
 
-<body class="bg-terminal-bg text-fg font-mono min-h-screen selection:bg-terminal-cyan/30 text-[12px]">
-   <!-- Top Status Bar -->
-   <header
-      class="h-8 bg-terminal-bg border-b border-terminal-border flex items-center justify-between px-4 text-[11px] font-bold">
-      <div class="flex items-center gap-6">
-         <div class="flex items-center gap-2">
-            <span class="text-terminal-cyan">QUANT TERMINAL v2.7.1</span>
-            <span class="text-fg-dim">|</span>
-            <span class="text-terminal-cyan">P99 LATENCY: <span id="stat-latency" class="text-fg">-- μs</span></span>
-         </div>
-         <div class="text-terminal-cyan">THROUGHPUT: <span id="stat-throughput" class="text-fg">-- orders/s</span>
-         </div>
-      </div>
-      <div class="flex items-center gap-6">
-         <div class="flex items-center gap-4">
-            <span class="text-fg-dim">CONNECTION:</span>
-            <div id="status-badge" class="flex items-center gap-2 text-terminal-red">
-               <span class="w-2 h-2 bg-terminal-red rounded-full animate-pulse"></span>
-               DISCONNECTED
-            </div>
-         </div>
-         <div id="terminal-clock" class="text-fg-mute">2026-04-08 19:32:00</div>
-         <button id="help-toggle"
-            class="flex items-center justify-center w-6 h-6 text-fg-mute hover:text-terminal-cyan transition-colors"
-            aria-label="Show onboarding" title="What is this?">
-            <i class="ph-bold ph-info text-[14px]"></i>
-         </button>
-         <button id="theme-toggle"
-            class="theme-toggle flex items-center justify-center w-6 h-6 text-fg-mute hover:text-terminal-cyan transition-colors"
-            aria-label="Cycle theme" title="Cycle theme: system → light → dark">
-            <i class="ph-bold ph-monitor icon-system text-[13px]"></i>
-            <i class="ph-bold ph-sun     icon-light  text-[13px]"></i>
-            <i class="ph-bold ph-moon    icon-dark   text-[13px]"></i>
-         </button>
+<body>
+   <header class="cmd">
+      <h1 class="sec">OCaml LOB <small>BOOK</small></h1>
+      <form id="ticket" class="ticket" aria-label="Order ticket">
+         <fieldset class="sides">
+            <legend class="sr-only">Side</legend>
+            <label><input type="radio" name="side" value="BUY" checked><span class="buy">Buy</span></label>
+            <label><input type="radio" name="side" value="SELL"><span class="sell">Sell</span></label>
+         </fieldset>
+         <label class="field">Qty <input id="qty" name="qty" inputmode="numeric" autocomplete="off" value="100"></label>
+         <label class="field">@ <input id="price" name="price" inputmode="decimal" autocomplete="off" placeholder="150.2500"></label>
+         <button class="go" type="submit" id="go">Send &lt;GO&gt;</button>
+         <output id="ticket-status" aria-live="polite"></output>
+      </form>
+      <div class="feed">
+         <span>Feed <span id="feed" data-state="retry" aria-live="polite">Connecting</span></span>
+         <time id="clock"></time>
       </div>
    </header>
 
-   <!-- Main Dashboard Grid -->
-   <main class="grid grid-cols-12 h-[calc(100vh-2rem)] border-b border-terminal-border">
+   <nav class="menu" aria-label="Functions">
+      <button type="button" data-key="1"><b>1)</b> Buy</button>
+      <button type="button" data-key="2"><b>2)</b> Sell</button>
+      <button type="button" data-key="3"><b>3)</b> How it works</button>
+      <a data-key="4" href="https://github.com/Builder106/ocaml-limit" target="_blank" rel="noopener"><b>4)</b> Source</a>
+      <p>Price first, then time</p>
+   </nav>
 
-      <!-- Column 1: Order Book -->
-      <section class="col-span-3 border-r border-terminal-border flex flex-col overflow-hidden">
-         <div class="panel-header px-3 py-1">Order Book L2</div>
-         <div class="flex flex-col flex-1 overflow-hidden">
-            <!-- Table Headers -->
-            <div class="grid grid-cols-3 px-3 py-1 bg-terminal-header text-[9px] text-fg-mute border-b border-terminal-border">
-               <div class="text-left">PRICE</div>
-               <div class="text-right">QTY</div>
-               <div class="text-right">CUMULATIVE</div>
-            </div>
-
-            <div class="flex-1 overflow-y-auto no-scrollbar font-medium">
-               <!-- Sell Side (Asks) - Higher prices at top -->
-               <div id="ask-book" class="flex flex-col-reverse"></div>
-
-               <!-- Spread / Mid -->
-               <div
-                  class="py-1 px-3 bg-terminal-cyan/10 border-y border-terminal-cyan/20 flex items-center justify-between text-terminal-cyan font-bold h-6">
-                  <span>SPREAD</span>
-                  <span id="spread">0.00</span>
-               </div>
-
-               <!-- Buy Side (Bids) - Higher prices at top -->
-               <div id="bid-book"></div>
-            </div>
+   <main class="screen">
+      <section class="book" aria-labelledby="book-title">
+         <h2 id="book-title">Book <span id="book-state" aria-live="polite"></span></h2>
+         <div class="cols" aria-hidden="true">
+            <span>Price</span><span>Size</span><span>Orders</span><span>Queue, oldest first</span>
          </div>
+         <ol id="ladder" class="levels" aria-label="Price ladder, highest price first"></ol>
+         <p class="note">Each row is one price, highest at the top, and shaded rows sit inside the spread. Each block is an order resting at that price, as wide as its size. A new order fills against the oldest block at the best price first. Yours are outlined.</p>
       </section>
 
-      <!-- Column 2 & 3: Analytics & Activity -->
-      <section class="col-span-6 flex flex-col border-r border-terminal-border overflow-hidden">
-         <!-- Liquidity Depth Chart -->
-         <div class="flex-1 flex flex-col border-b border-terminal-border overflow-hidden">
-            <div class="panel-header px-3 py-1">Liquidity Depth (DOM)</div>
-            <div class="flex-1 p-4 relative">
-               <canvas id="depthChart"></canvas>
+      <aside class="side">
+         <section aria-labelledby="quote-title">
+            <h2 id="quote-title">Quote</h2>
+            <dl>
+               <dt>Bid</dt><dd id="q-bid">-</dd>
+               <dt>Ask</dt><dd id="q-ask">-</dd>
+               <dt>Spread</dt><dd id="q-spread">-</dd>
+               <dt>Last fill</dt><dd id="q-last">-</dd>
+               <dt>Orders in</dt><dd id="q-orders">-</dd>
+               <dt>Fills</dt><dd id="q-trades">-</dd>
+               <dt>Volume</dt><dd id="q-volume">-</dd>
+               <dt>Watching now</dt><dd id="q-viewers">-</dd>
+            </dl>
+         </section>
+         <section class="host" aria-labelledby="host-title">
+            <h2 id="host-title">Engine on this server</h2>
+            <dl>
+               <dt>Throughput</dt><dd id="h-mops">-</dd>
+               <dt>Allocated</dt><dd id="h-bytes">-</dd>
+            </dl>
+            <p>Measured when the server started, with the workload from <span class="mono">test/perf_test.ml</span>.</p>
+         </section>
+         <section class="tape" aria-labelledby="tape-title">
+            <h2 id="tape-title">Fills</h2>
+            <div class="tape-scroll">
+               <table>
+                  <thead><tr><th scope="col">Time</th><th scope="col">Price</th><th scope="col">Qty</th><th scope="col">Taker</th></tr></thead>
+                  <tbody id="tape"></tbody>
+               </table>
             </div>
-         </div>
-
-         <!-- Risk Engine Activity -->
-         <div class="h-1/3 flex flex-col overflow-hidden">
-            <div class="panel-header px-3 py-1">Risk Engine Activity</div>
-            <div id="risk-log" class="flex-1 p-3 overflow-y-auto no-scrollbar font-mono text-[11px] space-y-1">
-               <div class="text-fg-dim italic">Waiting for engine heartbeat...</div>
-            </div>
-         </div>
-      </section>
-
-      <!-- Column 4: Trade Tape & Entry -->
-      <section class="col-span-3 flex flex-col overflow-hidden">
-         <!-- Trade Tape -->
-         <div class="flex-1 flex flex-col border-b border-terminal-border overflow-hidden">
-            <div class="panel-header px-3 py-1">Trade Tape (Real-Time)</div>
-            <div class="grid grid-cols-4 px-3 py-1 bg-terminal-header text-[9px] text-fg-mute border-b border-terminal-border">
-               <div>TIMESTAMP</div>
-               <div class="text-right">PRICE</div>
-               <div class="text-right">QTY</div>
-               <div class="text-right">SIDE</div>
-            </div>
-            <div id="trade-tape" class="flex-1 overflow-y-auto no-scrollbar font-mono p-2"></div>
-         </div>
-
-         <!-- Order Entry -->
-         <div class="h-48 flex flex-col overflow-hidden">
-            <div class="panel-header px-3 py-1">Quick Entry</div>
-            <div class="p-4 grid grid-cols-1 gap-4">
-               <div class="grid grid-cols-3 gap-2">
-                  <div class="flex flex-col gap-1">
-                     <label class="text-[9px] text-fg-mute uppercase">Symbol</label>
-                     <input type="text" value="AAPL"
-                        class="bg-terminal-header border border-terminal-border text-fg px-2 py-1 outline-none focus:border-terminal-cyan">
-                  </div>
-                  <div class="flex flex-col gap-1">
-                     <label class="text-[9px] text-fg-mute uppercase">Price</label>
-                     <input type="text" id="order-price" value="150.25"
-                        class="bg-terminal-header border border-terminal-border text-fg px-2 py-1 outline-none focus:border-terminal-cyan">
-                  </div>
-                  <div class="flex flex-col gap-1">
-                     <label class="text-[9px] text-fg-mute uppercase">Qty</label>
-                     <input type="text" id="order-qty" value="100"
-                        class="bg-terminal-header border border-terminal-border text-fg px-2 py-1 outline-none focus:border-terminal-cyan">
-                  </div>
-               </div>
-               <div class="grid grid-cols-2 gap-3">
-                  <button onclick="placeOrder('BUY')"
-                     class="h-10 bg-terminal-green/80 hover:bg-terminal-green text-black font-bold uppercase tracking-wider transition-colors">
-                     LMT BUY
-                  </button>
-                  <button onclick="placeOrder('ASK')"
-                     class="h-10 bg-terminal-red/80 hover:bg-terminal-red text-black font-bold uppercase tracking-wider transition-colors">
-                     LMT SELL
-                  </button>
-               </div>
-               <div class="grid grid-cols-2 text-[10px]">
-                  <div>
-                     <span class="text-fg-mute">POSITION:</span>
-                     <span class="text-terminal-green ml-2">+2,500</span>
-                  </div>
-                  <div class="text-right">
-                     <span class="text-fg-mute">UNREALIZED P&L:</span>
-                     <span class="text-terminal-green ml-2">+$20,375.00</span>
-                  </div>
-               </div>
-            </div>
-         </div>
-      </section>
+         </section>
+      </aside>
    </main>
 
-   <!-- Onboarding modal: auto-opens on first visit (dismissal persists in
-        localStorage), re-openable via the (i) button in the header. -->
-   <div id="onboarding-modal" role="dialog" aria-modal="true" aria-labelledby="onb-title">
-      <div class="backdrop" data-close></div>
-      <div class="card">
-         <button class="close" data-close aria-label="Dismiss">✕</button>
-         <h1 id="onb-title">OCaml LOB</h1>
-         <p class="tagline">Limit Order Book matching engine in OCaml 5</p>
-         <p class="pitch">
-            <span class="num">~18 M orders/sec</span>,
-            <span class="num">p99 &lt; 1 μs</span>,
-            <span class="num">0 bytes</span> allocated per submit
-            (bench-validated). Running live on a 1/8-OCPU free-tier VM,
-            serving this dashboard over WebSockets from a Dream HTTP server.
-         </p>
-         <h2>What you're seeing</h2>
-         <ul>
-            <li><b>Order Book L2</b> live bid/ask stack, deepest on the outside</li>
-            <li><b>Liquidity Depth</b> DOM visualization of resting liquidity</li>
-            <li><b>Trade Tape</b> real-time fills generated by an in-process market-making bot</li>
-            <li><b>Risk Engine</b> pre-trade gate activity (price band, position limit)</li>
-            <li><b>Quick Entry</b> submit a manual order against the live book</li>
-         </ul>
-         <div class="row">
-            <a class="btn" href="https://github.com/Builder106/ocaml-limit" target="_blank" rel="noopener">View Code</a>
-            <button class="btn primary" data-close>Explore →</button>
-         </div>
+   <dialog id="about" aria-labelledby="about-title">
+      <h2 id="about-title">How it works</h2>
+      <div class="body">
+         <p>This page is wired to one matching engine written in OCaml 5. A small bot quotes and trades against it all day, and the orders you send land in the same book.</p>
+         <p><strong>Each row is a queue.</strong> Orders at one price wait in the order they arrived. When an order crosses the spread, it fills against the oldest order at the best price, then the next oldest, then the next price. That rule is price-time priority.</p>
+         <p>Inside the engine a price is an integer tick, so $150.2500 is <span class="mono">1_502_500</span>. The matching path allocates nothing per order, which the throughput figure on the right measures on this server each time it starts.</p>
       </div>
-   </div>
+      <div class="row">
+         <a href="https://github.com/Builder106/ocaml-limit" target="_blank" rel="noopener">Read the code</a>
+         <button type="button" id="about-close">Close</button>
+      </div>
+   </dialog>
 
-   <!-- Vercel Analytics + Speed Insights. Only loaded on the Vercel
-        deploy — the same files also serve from the Dream server on the
-        Oracle VM, where /_vercel/* would 404. The window.va / window.si
-        shims buffer auto-instrumentation events until the deferred
-        scripts execute. -->
+   <!-- Vercel Analytics and Speed Insights load only on the Vercel
+        deploy; the Dream server would 404 on /_vercel/*. -->
    <script>
       if (location.hostname.endsWith('.vercel.app')) {
          window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
