@@ -21,6 +21,10 @@ let visitor_price_band = 1_000 (* visitors may quote within ±$0.10 of the mid *
 let visitor_max_qty = 5_000
 let max_resting_per_side = 120
 
+(* The bot stops quoting at a price once its queue holds this many orders, so depth
+   spreads across the ladder instead of piling onto a few prices. *)
+let max_bot_queue = 8
+
 (* The bot quotes on a ladder of [grid] ticks ($0.005) so orders queue at each price. *)
 let grid = 50
 let snapshot_levels = 12
@@ -193,9 +197,9 @@ let next_id r =
   incr r;
   !r
 
-let bot_order engine ~side ~price ~qty =
+let bot_order ?(order_type = Limit) engine ~side ~price ~qty =
   let order =
-    make_order ~id:(next_id bot_next_id) ~side ~price ~qty ~order_type:Limit ~timestamp:0
+    make_order ~id:(next_id bot_next_id) ~side ~price ~qty ~order_type ~timestamp:0
   in
   ignore (submit engine order)
 
@@ -217,26 +221,35 @@ let trim_side (engine : Engine.t) side =
       let head = Pool.get engine.pool lvl.pl_head in
       ignore (Engine.cancel engine head.qn_order.id lvl.pl_price side)
 
+let queue_length engine side price =
+  match Price_index.find (side_book engine side).levels price with
+  | exception Not_found -> 0
+  | lvl -> lvl.pl_order_count
+
 (* Action mix: 55% cross the spread (fills), 35% rest a quote (depth), 10% step the
-   mid one rung within [mid_drift_bound]. *)
+   mid one rung within [mid_drift_bound]. Crossing and resting sizes are set so the
+   bot takes roughly as much as it adds. *)
 let bot_step engine =
   let action = Random.float 1.0 in
   let side = if Random.bool () then Buy else Ask in
   if action < 0.55 then
     let cross = grid * (1 + Random.int 3) in
     let price = match side with Buy -> !mid_price + cross | Ask -> !mid_price - cross in
-    bot_order engine ~side ~price ~qty:(20 + Random.int 180)
+    (* IOC: an aggressor takes what is there and never rests, so only quotes
+       (capped at [max_bot_queue]) build the queues. *)
+    bot_order ~order_type:IOC engine ~side ~price ~qty:(50 + Random.int 350)
   else if action < 0.90 then
     let offset = grid * (1 + Random.int 10) in
     let price =
       match side with Buy -> !mid_price - offset | Ask -> !mid_price + offset
     in
-    bot_order engine ~side ~price ~qty:(100 + Random.int 600)
-  else
-    let low = mid_price_initial - mid_drift_bound in
-    let high = mid_price_initial + mid_drift_bound in
-    let step = if Random.bool () then grid else -grid in
-    mid_price := max low (min high (!mid_price + step))
+    if queue_length engine side price < max_bot_queue then
+      bot_order engine ~side ~price ~qty:(100 + Random.int 600)
+    else
+      let low = mid_price_initial - mid_drift_bound in
+      let high = mid_price_initial + mid_drift_bound in
+      let step = if Random.bool () then grid else -grid in
+      mid_price := max low (min high (!mid_price + step))
 
 let rec run_bot engine =
   let%lwt () = Lwt_unix.sleep (0.4 +. Random.float 0.6) in
