@@ -24,13 +24,16 @@ test('seeded SSE book, fills, and order ticket', async ({ page }) => {
     }
     Object.defineProperty(window, 'EventSource', { value: SeededEventSource });
   });
-  await page.route('**/order', (route) =>
-    route.fulfill({
+  // The delay makes the response arrive after the next book frame would,
+  // the order a slow network produces.
+  await page.route('**/order', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ status: 'ok', id: 7, filled: 0, resting: 100 }),
-    }),
-  );
+    });
+  });
   await page.goto('/');
 
   const push = (msg: unknown) => page.evaluate((m) => (window as unknown as { feed: Feed }).feed.push(m), msg);
@@ -60,6 +63,7 @@ test('seeded SSE book, fills, and order ticket', async ({ page }) => {
   expect(sent.method()).toBe('POST');
   expect(sent.postDataJSON()).toEqual({ side: 'BUY', price: 1_500_000, qty: 100 });
 
+  await expect(page.locator('#ticket-status')).toContainText('#7 Buy sent');
   await push(book([[1_000_000_002, 7], [7, 100]]));
   await expect(page.locator('#ticket-status')).toContainText('2nd in line at 149.9900');
   await expect(page.locator('#ladder .ord.mine')).toHaveCount(1);
