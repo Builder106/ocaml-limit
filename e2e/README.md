@@ -12,7 +12,7 @@ e2e/
 ├── reporter/demo-reporter.ts   webm → mp4, skips warmups + 0-byte files
 ├── support/demo-fixtures.ts    cursor injection, dwell helper, animated typing
 ├── steps/                      step definitions, English-phrased
-├── demo/features/              one .feature per cluster (00–04)
+├── demo/features/              one .feature per flow (00–03)
 └── scripts/to-gifs.sh          two-pass-palette mp4 → gif conversion
 ```
 
@@ -30,17 +30,25 @@ the webm → mp4 step). `brew install ffmpeg` on macOS.
 ## Recording
 
 ```bash
-npm run demo                   # all features, against the live VM
+npm run demo                   # all features, against the live page
 ```
 
-By default the demos target `https://ocaml-lob.duckdns.org/`. To
+By default the demos target `https://ocaml-lob.vercel.app/`. To
 record against a local dev server instead:
 
 ```bash
 DEMO_URL=http://localhost:8080/ npm run demo
 ```
 
-Outputs land in `e2e/demo-output/<feature>-<scenario>.mp4`.
+On a machine inside the tailnet, the Funnel host resolves to a private
+address and Chromium blocks the page's requests to it. Map the host to
+one of its public relay addresses (`dig +short <host> @1.1.1.1`):
+
+```bash
+DEMO_HOST_RULES='MAP econos-kernel.tailcb96b4.ts.net <relay-ip>' npm run demo
+```
+
+Outputs land in `e2e/demo-output/<feature>.mp4`.
 
 Then:
 
@@ -58,7 +66,8 @@ All overridable as env vars:
 | Var | Default | What it controls |
 | --- | --- | --- |
 | `DEMO` | `0`(set to`1`by the`demo` script) | Master switch — fixtures no-op when unset |
-| `DEMO_URL` | `https://ocaml-lob.duckdns.org/` | Target |
+| `DEMO_URL` | `https://ocaml-lob.vercel.app/` | Target |
+| `DEMO_HOST_RULES` | unset | Chromium `--host-resolver-rules` value |
 | `DEMO_SLOWMO` | `1200` | Per-action pause (ms) |
 | `DEMO_TYPE_DELAY` | `70` | Per-character delay in`animatedFill` |
 | `DEMO_TAIL_MS` | `1500` | Hold-final-frame at end of each scenario |

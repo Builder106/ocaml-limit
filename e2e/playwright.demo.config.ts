@@ -5,12 +5,16 @@
  * pacing over assertion density.
  *
  * Key knobs (all overridable via env vars):
- *   DEMO_URL        target (default: production)
+ *   DEMO_URL        target (default: the production Vercel page)
  *   DEMO_SLOWMO     per-action pause in ms (default: 1200)
  *   DEMO_TAIL_MS    hold-final-frame at end of each scenario (default: 1500)
  *   DEMO_DWELL_MS   default dwellForDemo duration (default: 1500)
  *   DEMO_TYPE_DELAY per-char delay for animated typing (default: 70)
  *   DEMO_ZOOM       CSS zoom factor on <html> (default: 1.3)
+ *   DEMO_HOST_RULES Chromium --host-resolver-rules value. On a machine
+ *                   inside the tailnet, the Funnel host resolves to a
+ *                   private address and Chromium's local network access
+ *                   check blocks the page; map it to a public relay.
  */
 
 import { defineConfig, devices } from '@playwright/test';
@@ -31,6 +35,8 @@ const testDir = defineBddConfig({
 });
 
 const slowMo = Number(process.env.DEMO_SLOWMO ?? 1200);
+const hostRules = process.env.DEMO_HOST_RULES;
+const args = hostRules ? [`--host-resolver-rules=${hostRules}`] : [];
 
 export default defineConfig({
   testDir,
@@ -44,7 +50,7 @@ export default defineConfig({
   ],
 
   use: {
-    baseURL: process.env.DEMO_URL ?? 'https://ocaml-lob.duckdns.org/',
+    baseURL: process.env.DEMO_URL ?? 'https://ocaml-lob.vercel.app/',
     headless: true,           // still records video; saves a window
     // Recording at 1440x900 (was 2560x1600). The output GIF lands at
     // 1280px wide, so 1440 source gives a clean 1.12× downscale and
@@ -57,7 +63,7 @@ export default defineConfig({
       mode: 'on',
       size: { width: 1440, height: 900 },
     },
-    launchOptions: { slowMo },
+    launchOptions: { slowMo, args },
     actionTimeout: 15_000,
   },
 

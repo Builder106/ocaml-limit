@@ -1,15 +1,10 @@
 /**
- * Demo-mode setup: cursor injection, animated typing helper, dwell,
- * default theme pin.
+ * Demo-mode setup: cursor injection, animated typing helper, dwell.
  *
  * The Playwright-BDD test fixture is extended so every page:
  *   1. Has a visible cursor dot following mouse events (headless
  *      hides the system cursor; without this, viewers can't see
  *      where the test is "looking").
- *   2. Has `localStorage.theme = 'dark'` pre-set so demos boot in the
- *      brand aesthetic without depending on the host OS preference.
- *      Individual scenarios that need a different starting state
- *      override via the localStorage steps.
  *
  * Step files import `animatedFill` and `dwellForDemo` directly for
  * the per-keystroke typing animation and explicit narrative pauses.
@@ -31,13 +26,7 @@ const TYPE_DELAY = Number(process.env.DEMO_TYPE_DELAY ?? 70);
 // 2. Init scripts injected on every page navigation. Defined as a
 //    single string so they execute together before any user JS.
 // ────────────────────────────────────────────────────────────────────
-const CURSOR_AND_THEME_INIT = `
-  // Pin the dashboard to dark mode by default so demos look
-  // consistent regardless of OS pref. Individual scenarios override.
-  if (!localStorage.getItem('theme')) {
-    localStorage.setItem('theme', 'dark');
-  }
-
+const CURSOR_INIT = `
   // Inject a visible cursor dot that follows mouse events.
   // Headless mode hides the system cursor; without this, viewers
   // can't see where actions are happening.
@@ -50,9 +39,8 @@ const CURSOR_AND_THEME_INIT = `
       z-index: 2147483647;
       width: 22px; height: 22px;
       border-radius: 50%;
-      background: rgba(0, 240, 255, 0.85);
-      box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.25),
-                  0 0 18px rgba(0, 240, 255, 0.6);
+      background: rgba(255, 255, 255, 0.85);
+      box-shadow: 0 0 0 3px rgba(255, 165, 43, 0.6);
       pointer-events: none;
       transform: translate(-50%, -50%);
       transition: transform 80ms linear;
@@ -111,7 +99,7 @@ export type DemoFixtures = {
 
 export const test = base.extend<DemoFixtures>({
   page: async ({ page }, use) => {
-    await page.addInitScript({ content: CURSOR_AND_THEME_INIT });
+    await page.addInitScript({ content: CURSOR_INIT });
     await use(page);
     // Hold the final frame so the end-state of the scenario reads as
     // a still. Try/catch because the page may already be closed.
