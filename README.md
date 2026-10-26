@@ -83,42 +83,33 @@ The Docker image runs the server by default and also ships `./perf_test`. SSE re
 Demo videos below were recorded with Playwright + the project's local E2E suite. Each one shows a single user flow end-to-end so you can see the dashboard behaving live.
 
 <details>
-<summary><strong>Live order book + depth chart + trade tape</strong></summary>
+<summary><strong>The live book, drawn as queues</strong></summary>
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/demos/01-core-dark.gif">
-  <img src="assets/demos/01-core-light.gif" alt="Live order book, depth chart, and trade tape">
-</picture>
+<img src="assets/demos/01-core.gif" alt="A fixed price ladder where each row holds its resting orders as blocks, oldest first. Fills shrink and remove blocks from the front of the queues while the fills tape updates.">
 
-The dashboard streams L2 book snapshots every 500 ms over Server-Sent Events. The depth chart on the center pane visualizes resting liquidity; the trade tape on the right shows every fill the engine produces (both from the in-process demo bot and from manual orders).
+The dashboard streams the book every 500 ms over Server-Sent Events. Each row of the price ladder holds the orders resting at that price, oldest next to the price, and fills from the demo bot eat them from the front.
 
 </details>
 
 <details>
-<summary><strong>Manual order entry with live risk feedback</strong></summary>
+<summary><strong>Joining the queue at the best bid</strong></summary>
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/demos/02-manual-entry-dark.gif">
-  <img src="assets/demos/02-manual-entry-light.gif" alt="Submitting a manual order from the Quick Entry panel">
-</picture>
+<img src="assets/demos/02-manual-entry.gif" alt="Clicking the best bid price, typing a quantity of 300, and pressing Send. The new order appears outlined at the back of the bid queue and the ticket reports its place in line.">
 
-The Quick Entry panel POSTs orders straight into the running engine. Rejected orders surface in the Risk Engine Activity log on the left.
+Clicking a price loads it into the ticket, and Send posts the order into the running engine. Your order is outlined in its queue, and the ticket counts its place in line as orders ahead of it fill.
 
 </details>
 
 <details>
-<summary><strong>First-visit onboarding modal</strong></summary>
+<summary><strong>How it works</strong></summary>
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/demos/04-onboarding-dark.gif">
-  <img src="assets/demos/04-onboarding-light.gif" alt="First-visit onboarding modal: open, dismiss, re-open via info icon">
-</picture>
+<img src="assets/demos/03-how-it-works.gif" alt="Pressing 3 opens a short explanation of price-time priority and integer ticks, then Close returns to the book.">
 
-Auto-opens on first visit with the headline numbers and a panel-by-panel guide. Dismissal persists in `localStorage`; the (i) icon in the header re-opens it.
+Pressing `3`, or choosing it from the numbered menu, opens a short explanation of price-time priority and integer ticks.
 
 </details>
 
-> **For maintainers:** recording flow — `npm --prefix e2e run demo`records mp4s at 1440×900 into`e2e/demo-output/`, then `npm --prefix e2e run gifs`converts them to 1280px-wide GIFs in`assets/demos/`. Every feature has a `-light`and`-dark`variant; the README embeds them via`<picture media="(prefers-color-scheme: dark)">` so the active gif follows the reader's browser theme. Recorded close to the README's display resolution so the GIFs are crisp on Retina without blowing GitHub's 10 MB inline-image cap.
+> **For maintainers:** `npm --prefix e2e run demo` records mp4s at 1440×900 into `e2e/demo-output/`, then `npm --prefix e2e run gifs` converts them to 1280px-wide GIFs in `assets/demos/`. The page is dark-only, so each flow has one GIF. See [e2e/README.md](e2e/README.md) for recording from a machine inside the tailnet.
 
 ---
 
