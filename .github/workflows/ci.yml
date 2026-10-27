@@ -64,7 +64,7 @@ jobs:
         run: opam install --yes dune alcotest dream yojson lwt_ppx
 
       - name: Type check
-        run: opam exec -- dune build @check
+        run: opam exec -- dune build @check bin/
 
   test:
     name: OCaml unit & perf regression tests (${{ matrix.os }})
@@ -134,7 +134,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '24'
       - name: Install browser test dependencies
         working-directory: e2e
         run: npm install

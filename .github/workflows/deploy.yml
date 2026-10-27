@@ -44,7 +44,6 @@ concurrency:
 
 permissions:
   contents: read
-  packages: write
 
 env:
   REGISTRY: ghcr.io
@@ -82,6 +81,8 @@ jobs:
   build-amd64:
     name: Build linux/amd64
     needs: test
+    permissions:
+      packages: write
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -123,6 +124,8 @@ jobs:
   build-arm64:
     name: Build linux/arm64
     needs: test
+    permissions:
+      packages: write
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v7
@@ -164,6 +167,8 @@ jobs:
   merge-manifest:
     name: Merge multi-platform manifest
     needs: [build-amd64, build-arm64]
+    permissions:
+      packages: write
     runs-on: ubuntu-latest
     steps:
       - name: Set up Docker Buildx

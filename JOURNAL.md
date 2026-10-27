@@ -4,6 +4,14 @@
 > things happen — retrospectives need this raw material to land.
 > Reverse-chronological; one paragraph max per entry.
 
+## 2026-10-27: Scope package publishing permission #ci #security
+
+Only the image build and manifest jobs now have package write access. The test job keeps read-only repository access.
+
+## 2026-10-27: Check the restored server in CI #ci #decision
+
+The Dune check now builds `bin/` because the restored server lives there. The dashboard smoke uses Node 24, matching the project's runtime decision.
+
 ## 2026-10-25: Restore the server, redraw the dashboard as a queue ladder #decision #pivot
 
 The live demo had shown made-up data since the micro VM was retired: with no backend, `app.js` invented prices, latency, a position and a P&L. `bin/server.ml` is back from history, adapted to today's `lib/`, and runs in a container behind a Tailscale Funnel path. The snapshot now carries each level's FIFO queue as order ids and sizes. The random "risk alerts" are gone, and throughput comes from timing the `perf_test` workload on the serving host at startup. The bot quotes on a 50-tick grid so orders actually queue at a price, and visitor orders must sit on that grid within 1,000 ticks of the mid. Once a side holds more than 120 orders, the bot cancels the oldest order at the farthest level. Those limits exist because the price index never drops a level and the node pool is fixed. The page itself was rebuilt because it had drifted toward EconOS: light grey, monospace everywhere, tiled panes. It's now a Bloomberg-style function screen, black with amber labels, numbered functions and a GO key, which EconOS's design deliberately ruled out. The center is the README banner's idea made live. The book is a fixed ladder of prices where each row is its queue, fills eat blocks from the front, and your own orders are outlined with your place in line. The ladder is fixed because a top-N book shifted every row whenever a new best price appeared. The dark-only theme, the light/dark Gherkin demos and the README GIFs still show the old page and need re-recording.
