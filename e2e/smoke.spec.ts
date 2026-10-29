@@ -24,8 +24,8 @@ test('seeded SSE book, fills, and order ticket', async ({ page }) => {
     }
     Object.defineProperty(window, 'EventSource', { value: SeededEventSource });
   });
-  // The delay makes the response arrive after the next book frame would,
-  // the order a slow network produces.
+  // The delay makes this response arrive after the next book frame would
+  // arrive on a slow network.
   await page.route('**/order', async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 300));
     await route.fulfill({
