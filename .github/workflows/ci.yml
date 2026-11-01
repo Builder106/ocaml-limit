@@ -3,8 +3,16 @@ name: CI
 on:
   push:
     branches: [main, staging]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '.markdownlint*'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '.markdownlint*'
   workflow_dispatch:
 
 concurrency:
@@ -141,9 +149,24 @@ jobs:
       - name: Typecheck dashboard smoke
         working-directory: e2e
         run: npm run typecheck
-      - name: Install Chromium
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      - name: Install Playwright Chromium + system deps
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         working-directory: e2e
         run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright system deps only (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        working-directory: e2e
+        run: npx playwright install-deps chromium
       - name: Run seeded dashboard smoke
         working-directory: e2e
         run: npm test
