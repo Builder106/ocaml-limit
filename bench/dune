@@ -1,0 +1,6 @@
+(library
+ (name lob_bench)
+ (wrapped false)
+ (libraries ocaml_lob unix)
+ (ocamlopt_flags
+  (:standard -O3 -unbox-closures)))

@@ -1,3 +1,9 @@
 (tests
- (names test_engine perf_test test_internals test_properties test_protocols)
- (libraries ocaml_lob alcotest qcheck-alcotest qcheck unix))
+ (names
+  test_engine
+  perf_test
+  test_internals
+  test_properties
+  test_protocols
+  test_benchmarks)
+ (libraries ocaml_lob lob_bench alcotest qcheck-alcotest qcheck unix))

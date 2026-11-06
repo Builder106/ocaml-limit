@@ -37,6 +37,7 @@ RUN opam update -y && \
 
 COPY --chown=opam:opam dune ./
 COPY --chown=opam:opam lib/ ./lib/
+COPY --chown=opam:opam bench/ ./bench/
 COPY --chown=opam:opam bin/ ./bin/
 COPY --chown=opam:opam test/ ./test/
 
@@ -44,7 +45,7 @@ COPY --chown=opam:opam test/ ./test/
 # `USER opam` directive, so dune can't write `_build/` underneath it.
 RUN sudo chown -R opam:opam /home/opam/app && \
     eval $(opam env) && \
-    dune build bin/server.exe test/perf_test.exe
+    dune build bin/server.exe test/perf_test.exe bin/bench.exe
 
 # ----------------------------------------------------------------------
 # Stage 2: runtime
@@ -66,6 +67,8 @@ COPY --from=builder --chown=ocaml:ocaml \
     /home/opam/app/_build/default/bin/server.exe ./server
 COPY --from=builder --chown=ocaml:ocaml \
     /home/opam/app/_build/default/test/perf_test.exe ./perf_test
+COPY --from=builder --chown=ocaml:ocaml \
+    /home/opam/app/_build/default/bin/bench.exe ./bench
 COPY --chown=ocaml:ocaml front/ ./front/
 
 USER ocaml
