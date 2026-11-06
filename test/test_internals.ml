@@ -225,16 +225,82 @@ let test_price_index () =
     with Failure _ -> ())
 
 let test_stats () =
-  let st = Stats.create 10 in
+  let st = Stats.create 2 in
+  Alcotest.(check int) "empty count" 0 (Stats.count st);
+  Alcotest.(check int) "empty total_orders" 0 (Stats.total_orders st);
   Alcotest.(check (float 0.001)) "empty p99" 0.0 (Stats.get_percentile st 0.99);
+  Alcotest.(check int) "empty percentile_ns" 0 (Stats.percentile_ns st 0.99);
+  Alcotest.(check int) "empty min_ns" 0 (Stats.min_ns st);
+  Alcotest.(check int) "empty max_ns" 0 (Stats.max_ns st);
+  Alcotest.(check (float 0.001)) "empty mean_ns" 0.0 (Stats.mean_ns st);
+  Alcotest.(check (float 0.001)) "empty stddev_ns" 0.0 (Stats.stddev_ns st);
+  Alcotest.(check bool) "empty elapsed_sec" true (Stats.elapsed_sec st >= 0.0);
+  let empty_sum = Stats.get_summary st in
+  Alcotest.(check int) "empty summary count" 0 empty_sum.count;
+  Alcotest.(check int) "empty summary min" 0 empty_sum.min_ns;
+
+  (* Record single element *)
   Stats.record st 1000;
-  Stats.record st 2000;
+  Alcotest.(check int) "single count" 1 (Stats.count st);
+  Alcotest.(check int) "single min" 1000 (Stats.min_ns st);
+  Alcotest.(check int) "single max" 1000 (Stats.max_ns st);
+  Alcotest.(check (float 0.001)) "single mean" 1000.0 (Stats.mean_ns st);
+  Alcotest.(check (float 0.001)) "single stddev" 0.0 (Stats.stddev_ns st);
+
+  (* Record second element to fill capacity *)
+  Stats.record st 3000;
+  Alcotest.(check int) "two count" 2 (Stats.count st);
+  Alcotest.(check int) "two min" 1000 (Stats.min_ns st);
+  Alcotest.(check int) "two max" 3000 (Stats.max_ns st);
+  Alcotest.(check (float 0.001)) "two mean" 2000.0 (Stats.mean_ns st);
+  Alcotest.(check bool) "two stddev > 0" true (Stats.stddev_ns st > 0.0);
+
+  (* Record third element to test capacity saturation *)
+  Stats.record st 5000;
+  Alcotest.(check int) "capacity bounded count" 2 (Stats.count st);
+  Alcotest.(check int) "total orders tracked" 3 (Stats.total_orders st);
+
   let p50 = Stats.get_percentile st 0.5 in
   Alcotest.(check bool) "p50 > 0" true (p50 > 0.0);
+  let p50_ns = Stats.percentile_ns st 0.5 in
+  Alcotest.(check bool) "p50_ns > 0" true (p50_ns > 0);
+
+  (* Test percentile clamping on sorted array *)
+  let empty_st = Stats.create 5 in
+  Alcotest.(check int)
+    "empty sorted len" 0
+    (Array.length (Stats.sorted_latencies empty_st));
+  let sorted = Stats.sorted_latencies st in
+  Alcotest.(check int) "clamp low" 1000 (Stats.percentile_ns_from_sorted sorted (-0.5));
+  Alcotest.(check int) "clamp high" 3000 (Stats.percentile_ns_from_sorted sorted 1.5);
+  Alcotest.(check int) "normal p" 1000 (Stats.percentile_ns_from_sorted sorted 0.0);
+  Alcotest.(check int) "empty sorted p" 0 (Stats.percentile_ns_from_sorted [||] 0.5);
+
+  (* Test record_us and record_timing on a fresh stats instance *)
+  let st2 = Stats.create 10 in
+  Stats.record_us st2 1.5;
+  (* 1500 ns *)
+  Alcotest.(check int) "record_us count" 1 (Stats.count st2);
+  let timed_result = Stats.record_timing st2 (fun () -> 42) in
+  Alcotest.(check int) "record_timing res" 42 timed_result;
+  Alcotest.(check int) "record_timing count" 2 (Stats.count st2);
+
+  let sum = Stats.get_summary st2 in
+  Alcotest.(check int) "summary count" 2 sum.count;
+  Alcotest.(check bool) "summary p99 >= p50" true (sum.p99_us >= sum.p50_us);
+
+  (* Test table formatting and summary formatting *)
+  let hdr = Stats.table_header () in
+  Alcotest.(check bool) "header non-empty" true (String.length hdr > 0);
+  let row = Stats.table_row "TestFlow" sum in
+  Alcotest.(check bool) "row contains name" true (String.contains row 'T');
+  let fmt = Stats.format_summary "TestFlow" sum in
+  Alcotest.(check bool) "fmt non-empty" true (String.length fmt > 0);
 
   st.Stats.start_time <- Unix.gettimeofday () +. 10.0;
   (* Force elapsed <= 0 *)
   Alcotest.(check (float 0.001)) "zero throughput" 0.0 (Stats.get_throughput st);
+  Alcotest.(check (float 0.001)) "zero elapsed" 0.0 (Stats.elapsed_sec st);
 
   st.Stats.start_time <- Unix.gettimeofday () -. 10.0;
   (* Force elapsed > 0 *)

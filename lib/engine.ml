@@ -343,6 +343,27 @@ let submit engine order on_fill =
         else if order.status = Active then order.status <- Filled;
         r_ok)
 
+let rec cancel_find_and_remove pool level order_id idx =
+  if idx = -1 then false
+  else
+    let node = Pool.get pool idx in
+    if node.qn_order.id = order_id then (
+      let prev_idx = node.qn_prev in
+      let next_idx = node.qn_next in
+
+      if prev_idx <> -1 then (Pool.get pool prev_idx).qn_next <- next_idx
+      else level.pl_head <- next_idx;
+
+      if next_idx <> -1 then (Pool.get pool next_idx).qn_prev <- prev_idx
+      else level.pl_tail <- prev_idx;
+
+      level.pl_total_qty <- level.pl_total_qty - node.qn_order.remaining_qty;
+      level.pl_order_count <- level.pl_order_count - 1;
+      node.qn_order.status <- Cancelled;
+      Pool.free pool idx;
+      true)
+    else cancel_find_and_remove pool level order_id node.qn_next
+
 (** [cancel engine order_id price side] removes an order from the book. O(1) average to
     find the price level via [Price_index], then O(k) to scan the level's FIFO queue for
     the order id. *)
@@ -350,28 +371,4 @@ let cancel engine order_id price side =
   let book_side = if side = Buy then engine.book.bids else engine.book.asks in
   match Price_index.find book_side.levels price with
   | exception Not_found -> false
-  | level ->
-      (* Scan the level (O(k)) — in a production system, we'd use a 
-           hash-map of order_id -> node_idx for O(1) cancel. *)
-      let rec find_and_remove idx =
-        if idx = -1 then false
-        else
-          let node = Pool.get engine.pool idx in
-          if node.qn_order.id = order_id then (
-            let prev_idx = node.qn_prev in
-            let next_idx = node.qn_next in
-
-            if prev_idx <> -1 then (Pool.get engine.pool prev_idx).qn_next <- next_idx
-            else level.pl_head <- next_idx;
-
-            if next_idx <> -1 then (Pool.get engine.pool next_idx).qn_prev <- prev_idx
-            else level.pl_tail <- prev_idx;
-
-            level.pl_total_qty <- level.pl_total_qty - node.qn_order.remaining_qty;
-            level.pl_order_count <- level.pl_order_count - 1;
-            node.qn_order.status <- Cancelled;
-            Pool.free engine.pool idx;
-            true)
-          else find_and_remove node.qn_next
-      in
-      find_and_remove level.pl_head
+  | level -> cancel_find_and_remove engine.pool level order_id level.pl_head
