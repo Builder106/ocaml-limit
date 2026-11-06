@@ -84,13 +84,13 @@ let run_flow flow ~n ~warmup =
           | _ -> ()
           end;
         Gc.full_major ();
-        let gc_before = Gc.stat () in
+        let gc_before = Gc.quick_stat () in
         let mw_before = Gc.minor_words () in
         let t0 = Unix.gettimeofday () in
         execute_engine_flow engine actions n;
         let elapsed = Unix.gettimeofday () -. t0 in
         let mw_after = Gc.minor_words () in
-        let gc_after = Gc.stat () in
+        let gc_after = Gc.quick_stat () in
         let words = mw_after -. mw_before in
         let b = words *. 8.0 /. float_of_int n in
         let m = gc_after.minor_collections - gc_before.minor_collections in
@@ -101,13 +101,13 @@ let run_flow flow ~n ~warmup =
         (b, words, m, maj, mops)
     | Synthetic_flow.ProtocolFlow (buffer, offsets, decoder_type) ->
         Gc.full_major ();
-        let gc_before = Gc.stat () in
+        let gc_before = Gc.quick_stat () in
         let mw_before = Gc.minor_words () in
         let t0 = Unix.gettimeofday () in
         execute_protocol_flow buffer offsets decoder_type n;
         let elapsed = Unix.gettimeofday () -. t0 in
         let mw_after = Gc.minor_words () in
-        let gc_after = Gc.stat () in
+        let gc_after = Gc.quick_stat () in
         let words = mw_after -. mw_before in
         let b = words *. 8.0 /. float_of_int n in
         let m = gc_after.minor_collections - gc_before.minor_collections in
@@ -119,13 +119,13 @@ let run_flow flow ~n ~warmup =
     | Synthetic_flow.WireToEngineFlow (buffer, actions) ->
         let engine = Engine.create Types.default_config in
         Gc.full_major ();
-        let gc_before = Gc.stat () in
+        let gc_before = Gc.quick_stat () in
         let mw_before = Gc.minor_words () in
         let t0 = Unix.gettimeofday () in
         execute_wire_flow engine buffer actions n;
         let elapsed = Unix.gettimeofday () -. t0 in
         let mw_after = Gc.minor_words () in
-        let gc_after = Gc.stat () in
+        let gc_after = Gc.quick_stat () in
         let words = mw_after -. mw_before in
         let b = words *. 8.0 /. float_of_int n in
         let m = gc_after.minor_collections - gc_before.minor_collections in

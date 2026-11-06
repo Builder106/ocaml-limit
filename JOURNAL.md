@@ -4,9 +4,9 @@
 > things happen — retrospectives need this raw material to land.
 > Reverse-chronological; one paragraph max per entry.
 
-## 2026-11-06: Include QCheck dependencies in container image build stage #ci #fix
+## 2026-11-06: Include QCheck in container builder and use quick_stat in bench suite #ci #fix
 
-In `Dockerfile`, the builder stage built `bin/server.exe`, `test/perf_test.exe`, and `bin/bench.exe`, but omitted `qcheck` and `qcheck-alcotest` from the `opam install` layer, causing Docker image builds for amd64 and arm64 to fail in CI with `Error: Library "qcheck" not found`. Added `qcheck` and `qcheck-alcotest` to the builder package installation.
+In `Dockerfile`, the builder stage built `bin/server.exe`, `test/perf_test.exe`, and `bin/bench.exe`, but omitted `qcheck` and `qcheck-alcotest` from the `opam install` layer, causing Docker image builds for amd64 and arm64 to fail in CI with `Error: Library "qcheck" not found`. Furthermore, under OCaml 5.6 `Stdlib.Gc.stat` was deprecated in favor of `Gc.quick_stat ()`; updated `bench/bench_suite.ml` to call `Gc.quick_stat ()`.
 
 ## 2026-11-06: Benchmarking suite with statistical percentile latency analysis across synthetic order flows #feature #decision
 
