@@ -33,7 +33,7 @@ COPY --chown=opam:opam dune-project ocaml_lob.opam ./
 # Server libraries (dream pulls in lwt; lwt_ppx provides let%lwt) and
 # the test framework for perf_test.
 RUN opam update -y && \
-    opam install --yes dream yojson lwt_ppx alcotest
+    opam install --yes dream yojson lwt_ppx alcotest qcheck qcheck-alcotest
 
 COPY --chown=opam:opam dune ./
 COPY --chown=opam:opam lib/ ./lib/

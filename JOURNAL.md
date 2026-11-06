@@ -4,6 +4,10 @@
 > things happen — retrospectives need this raw material to land.
 > Reverse-chronological; one paragraph max per entry.
 
+## 2026-11-06: Include QCheck dependencies in container image build stage #ci #fix
+
+In `Dockerfile`, the builder stage built `bin/server.exe`, `test/perf_test.exe`, and `bin/bench.exe`, but omitted `qcheck` and `qcheck-alcotest` from the `opam install` layer, causing Docker image builds for amd64 and arm64 to fail in CI with `Error: Library "qcheck" not found`. Added `qcheck` and `qcheck-alcotest` to the builder package installation.
+
 ## 2026-11-06: Benchmarking suite with statistical percentile latency analysis across synthetic order flows #feature #decision
 
 Added a benchmarking suite (`bench/` and `bin/bench.ml`) providing statistical percentile latency analysis across nine realistic synthetic order flows: balanced two-sided quoting, deep book ladder construction across 200 price levels, aggressive multi-level sweep/IOC/FOK consumption, quote stuffing and queue cancel churn, iceberg replenishment loops, a composite realistic market profile, standalone ITCH 5.0 and OUCH 5.0 binary feed parsing, and end-to-end wire-to-engine ingestion. Enhanced `Ocaml_lob.Stats` with nanosecond-resolution statistical distributions (`min_ns`, `p50_us`, `p90_us`, `p95_us`, `p99_us`, `p99_9_us`, `p99_99_us`, `max_ns`, `mean_ns`, `stddev_ns`). Lifted `cancel_find_and_remove` in `lib/engine.ml` to top level, eliminating closure allocations during queue cancellation. Established a dual-pass measurement harness separating uninstrumented sustained throughput and allocation profiling from per-operation latency sampling, guaranteeing zero minor-heap allocations on core engine paths (0.00 to 0.12 B/op cold-path amortized) and bounded allocations on binary decoders (<= 512 B/payload). Automated Alcotest coverage in `test/test_benchmarks.ml` gates percentile monotonicity and regression ceilings, preserving 100% deterministic library line coverage.
