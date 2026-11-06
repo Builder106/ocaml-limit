@@ -56,6 +56,7 @@ let create config =
     {
       levels = Price_index.create price_index_capacity ~empty_value:sentinel_level;
       best_level = sentinel_level;
+      root_level = sentinel_level;
     }
   in
   let book =
@@ -86,28 +87,39 @@ let rec find_link_pred side new_price lvl =
    fires on the cold path (first touch of a price), not per order. *)
 let link_level side book_side new_level =
   let new_price = new_level.pl_price in
-  if book_side.best_level == sentinel_level then (
+  if book_side.root_level == sentinel_level then (
     new_level.pl_prev_level <- sentinel_level;
     new_level.pl_next_level <- sentinel_level;
+    book_side.root_level <- new_level;
     book_side.best_level <- new_level)
   else
-    let new_beats_best =
+    let new_beats_root =
       match side with
-      | Buy -> new_price > book_side.best_level.pl_price
-      | Ask -> new_price < book_side.best_level.pl_price
+      | Buy -> new_price > book_side.root_level.pl_price
+      | Ask -> new_price < book_side.root_level.pl_price
     in
-    if new_beats_best then (
+    if new_beats_root then (
       new_level.pl_prev_level <- sentinel_level;
-      new_level.pl_next_level <- book_side.best_level;
-      book_side.best_level.pl_prev_level <- new_level;
+      new_level.pl_next_level <- book_side.root_level;
+      book_side.root_level.pl_prev_level <- new_level;
+      book_side.root_level <- new_level;
       book_side.best_level <- new_level)
     else
-      let pred = find_link_pred side new_price book_side.best_level in
+      let pred = find_link_pred side new_price book_side.root_level in
       let succ = pred.pl_next_level in
       new_level.pl_prev_level <- pred;
       new_level.pl_next_level <- succ;
       pred.pl_next_level <- new_level;
-      if succ != sentinel_level then succ.pl_prev_level <- new_level
+      if succ != sentinel_level then succ.pl_prev_level <- new_level;
+      let cur_best = book_side.best_level in
+      let promote =
+        cur_best == sentinel_level
+        ||
+        match side with
+        | Buy -> new_price > cur_best.pl_price
+        | Ask -> new_price < cur_best.pl_price
+      in
+      if promote then book_side.best_level <- new_level
 
 (* [Price_index.find] raises [Not_found] on miss (no [Some]/[None]
    allocation) and is alloc-free on hit. The miss path allocates the
@@ -203,6 +215,7 @@ let rec fill_loop engine order on_fill opposite_book =
                     passive with
                     remaining_qty = reload_qty;
                     original_qty = reload_qty;
+                    status = Active;
                     order_type = Iceberg { visible_qty; total_qty = remaining_hidden };
                   }
                 in

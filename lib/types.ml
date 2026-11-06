@@ -156,7 +156,11 @@ let sentinel_level : price_level =
     - Bids: best bid at head of linked list
     - Asks: best ask at head of linked list *)
 
-type book_side = { levels : price_level Price_index.t; mutable best_level : price_level }
+type book_side = {
+  levels : price_level Price_index.t;
+  mutable best_level : price_level;
+  mutable root_level : price_level;
+}
 (** A side of the order book.
 
     [levels] is a [Price_index] (pre-allocated open-addressing hashtable). Only [find] /

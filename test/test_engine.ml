@@ -371,6 +371,66 @@ let test_link_level_edge_cases () =
   let b5 = limit ~id:10 ~side:Buy ~price:70 ~qty:10 in
   let _ = Engine.submit engine b5 noop_on_fill in
 
+  (* Edge case: Exhaust all asks so best_level == sentinel_level, while root_level remains *)
+  let sweep_asks =
+    make_order ~id:11 ~side:Buy ~price:200 ~qty:100 ~order_type:IOC ~timestamp:0
+  in
+  let _ = Engine.submit engine sweep_asks noop_on_fill in
+  Alcotest.(check bool)
+    "Ask best_level is sentinel" true
+    (engine.book.asks.best_level == sentinel_level);
+
+  (* Insert new ask at 150: new_beats_root is false (150 > 100), but cur_best is sentinel *)
+  let a6 = limit ~id:12 ~side:Ask ~price:150 ~qty:10 in
+  let _ = Engine.submit engine a6 noop_on_fill in
+  Alcotest.(check int)
+    "Ask best_level promoted from sentinel" 150 engine.book.asks.best_level.pl_price;
+
+  (* Insert ask at 170, sweep through 150 to 170 *)
+  let a7 = limit ~id:13 ~side:Ask ~price:170 ~qty:10 in
+  let _ = Engine.submit engine a7 noop_on_fill in
+  let sweep_150 = limit ~id:14 ~side:Buy ~price:170 ~qty:15 in
+  let _ = Engine.submit engine sweep_150 noop_on_fill in
+  Alcotest.(check int)
+    "Ask best_level advanced to 170" 170 engine.book.asks.best_level.pl_price;
+  Alcotest.(check int)
+    "Ask best_level remaining" 5 engine.book.asks.best_level.pl_total_qty;
+
+  (* Now cur_best is 170, root_level is 100. Insert 160 (new_beats_root false, 160 < 170 true) *)
+  let a8 = limit ~id:15 ~side:Ask ~price:160 ~qty:10 in
+  let _ = Engine.submit engine a8 noop_on_fill in
+  Alcotest.(check int)
+    "Ask best_level promoted to 160" 160 engine.book.asks.best_level.pl_price;
+
+  (* Symmetric edge case on Buy side: exhaust bids, insert worse than root when best_level is sentinel *)
+  let sweep_bids =
+    make_order ~id:16 ~side:Ask ~price:1 ~qty:100 ~order_type:IOC ~timestamp:0
+  in
+  let _ = Engine.submit engine sweep_bids noop_on_fill in
+  Alcotest.(check bool)
+    "Bid best_level is sentinel" true
+    (engine.book.bids.best_level == sentinel_level);
+
+  let b6 = limit ~id:17 ~side:Buy ~price:50 ~qty:10 in
+  let _ = Engine.submit engine b6 noop_on_fill in
+  Alcotest.(check int)
+    "Bid best_level promoted from sentinel" 50 engine.book.bids.best_level.pl_price;
+
+  let b7 = limit ~id:18 ~side:Buy ~price:30 ~qty:10 in
+  let _ = Engine.submit engine b7 noop_on_fill in
+  let sweep_50 = limit ~id:19 ~side:Ask ~price:30 ~qty:15 in
+  let _ = Engine.submit engine sweep_50 noop_on_fill in
+  Alcotest.(check int)
+    "Bid best_level advanced to 30" 30 engine.book.bids.best_level.pl_price;
+  Alcotest.(check int)
+    "Bid best_level remaining" 5 engine.book.bids.best_level.pl_total_qty;
+
+  (* Now cur_best is 30, root_level is 100. Insert 40 (new_beats_root false, 40 > 30 true) *)
+  let b8 = limit ~id:20 ~side:Buy ~price:40 ~qty:10 in
+  let _ = Engine.submit engine b8 noop_on_fill in
+  Alcotest.(check int)
+    "Bid best_level promoted to 40" 40 engine.book.bids.best_level.pl_price;
+
   Alcotest.(check int) "done" 1 1
 
 let test_fok_multilevel () =
