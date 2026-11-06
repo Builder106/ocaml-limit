@@ -20,6 +20,10 @@
 
 > **A high-speed financial exchange engine.** OCaml-Limit pairs buyers and sellers at sub-millisecond speeds, featuring a live Bloomberg-style trading terminal.
 
+<p align="center">
+  <img src="assets/screenshot.png" alt="The OCaml LOB trading terminal on a dark background. A price ladder draws each price level as a queue of resting orders, red for asks above and green for bids below, with a quote panel, the engine's throughput and a tape of recent fills on the right." width="880">
+</p>
+
 ## 💡 What is OCaml-Limit?
 
 At modern stock exchanges, millions of buy and sell orders arrive every second. OCaml-Limit is the core engine responsible for matching buyers and sellers instantly and fairly. It is built to run continuously with zero micro-pauses or lag, paired with an interactive market dashboard.
