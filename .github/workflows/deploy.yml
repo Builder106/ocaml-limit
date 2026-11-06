@@ -70,7 +70,7 @@ jobs:
       # on a clean opam switch; the Docker build catches server-side
       # type errors anyway.
       - name: Install test deps
-        run: opam install --yes alcotest
+        run: opam install --yes alcotest qcheck qcheck-alcotest
 
       - name: Build (lib + tests + bench)
         run: opam exec -- dune build lib/ test/

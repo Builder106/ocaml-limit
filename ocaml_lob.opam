@@ -13,6 +13,8 @@ depends: [
   "ocaml" {>= "5.0"}
   "dune" {>= "3.16"}
   "alcotest" {with-test & >= "1.7.0"}
+  "qcheck" {with-test & >= "0.20"}
+  "qcheck-alcotest" {with-test & >= "0.20"}
   "bisect_ppx" {with-test}
   "odoc" {with-doc}
 ]

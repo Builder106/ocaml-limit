@@ -31,5 +31,13 @@
    (and
     :with-test
     (>= 1.7.0)))
+  (qcheck
+   (and
+    :with-test
+    (>= 0.20)))
+  (qcheck-alcotest
+   (and
+    :with-test
+    (>= 0.20)))
   (bisect_ppx
    :with-test)))

@@ -69,7 +69,7 @@ jobs:
           opam-pin: false
 
       - name: Install deps
-        run: opam install --yes dune alcotest dream yojson lwt_ppx
+        run: opam install --yes dune alcotest qcheck qcheck-alcotest dream yojson lwt_ppx
 
       - name: Type check
         run: opam exec -- dune build @check bin/
@@ -92,7 +92,7 @@ jobs:
           opam-pin: false
 
       - name: Install test deps
-        run: opam install --yes alcotest
+        run: opam install --yes alcotest qcheck qcheck-alcotest
 
       - name: Build (lib + tests + bench)
         run: opam exec -- dune build lib/ test/
@@ -111,7 +111,7 @@ jobs:
           ocaml-compiler: '5.2'
           opam-pin: false
       - name: Install coverage tools
-        run: opam install --yes alcotest bisect_ppx
+        run: opam install --yes alcotest qcheck qcheck-alcotest bisect_ppx
       - name: Build instrumented tests
         run: opam exec -- dune build --instrument-with bisect_ppx test/test_engine.exe test/test_internals.exe
       - name: Run instrumented tests
