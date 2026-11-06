@@ -113,12 +113,13 @@ jobs:
       - name: Install coverage tools
         run: opam install --yes alcotest qcheck qcheck-alcotest bisect_ppx
       - name: Build instrumented tests
-        run: opam exec -- dune build --instrument-with bisect_ppx test/test_engine.exe test/test_internals.exe
+        run: opam exec -- dune build --instrument-with bisect_ppx test/test_engine.exe test/test_internals.exe test/test_protocols.exe
       - name: Run instrumented tests
         run: |
           mkdir -p coverage
           BISECT_ENABLE=YES BISECT_FILE="$PWD/coverage/engine.coverage" opam exec -- dune exec --no-build test/test_engine.exe
           BISECT_ENABLE=YES BISECT_FILE="$PWD/coverage/internals.coverage" opam exec -- dune exec --no-build test/test_internals.exe
+          BISECT_ENABLE=YES BISECT_FILE="$PWD/coverage/protocols.coverage" opam exec -- dune exec --no-build test/test_protocols.exe
           opam exec -- bisect-ppx-report merge coverage/merged.coverage coverage/*.coverage
       - name: Enforce 100% deterministic library coverage
         run: |

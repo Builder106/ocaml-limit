@@ -117,7 +117,7 @@ A few things this project explicitly doesn't do:
 
 - **Persistence.** The book is in-memory by design.
 - **Multi-symbol.** Engine instances are per-symbol; orchestration is the caller's problem.
-- **Network protocols beyond the demo.** No FIX, no ITCH, no OUCH — Server-Sent Events + a tiny JSON envelope is enough for the dashboard.
+- **Network sessions beyond the demo.** ITCH/OUCH payload decoders are standalone library modules (see [binary protocol specifications](docs/specs/binary-protocols.md)); feed transport, exchange connectivity and order-entry sessions remain outside the matching core.
 - **Authentication.** The live demo is a public sandbox.
 
 PRs that add any of those will probably be closed unless they're cleanly separable behind a feature flag.

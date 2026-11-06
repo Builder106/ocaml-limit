@@ -4,6 +4,10 @@
 > things happen — retrospectives need this raw material to land.
 > Reverse-chronological; one paragraph max per entry.
 
+## 2026-11-06: Standalone ITCH 5.0 and OUCH 5.0 payload decoders #feature #decision
+
+Added all 23 Nasdaq US TotalView-ITCH message layouts and both OUCH 5.0 directions (eight requests, 17 responses), using the official specifications recorded in `docs/specs/binary-protocols.md`. Decoders return typed records, preserve integer price scales and unsigned wire bits, and retain immutable zero-copy slices for text. OUCH appendages are structurally validated once and decoded into typed attributes on demand, retaining unknown tags and duplicates. This deliberately keeps feed framing, session I/O, business rules and engine submission outside the matching core. Record decoding has bounded allocation rather than a zero-allocation promise; representative add/enter paths have a 512-byte allocation regression guard. Golden vectors, exhaustive header truncations, all optional tags, maximum-length appendages, 10,000 QCheck buffer/window cases and the existing 100% deterministic library coverage gate validate the boundary.
+
 ## 2026-11-06: Property-based testing with QCheck and order book DLL/iceberg invariant hardening #test #decision
 
 Added exhaustive invariant fuzzing with QCheck covering order insertion, cancellation, and execution across limit, post-only, IOC, FOK, and iceberg orders. Fuzzing exposed two critical invariants: reloaded iceberg orders inherited a `Filled` status from their exhausted passive record instead of resetting to `Active`, and advancing `best_level` to `sentinel_level` on side exhaustion caused newly linked levels to sever the DLL connection to previously resident levels. Added `root_level` to `book_side` to anchor the sorted DLL across all price levels regardless of `best_level` advancement, preserving 100% deterministic unit test coverage and zero-allocation performance guarantees.
