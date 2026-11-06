@@ -5,7 +5,7 @@ Pure functional high-performance order book engine roadmap.
 ## v1.1 — Zero-Allocation Matching Loop
 
 - [x] **Unboxed Float & Fixed-Point Records**: Eliminating GC pressure in the core limit order book execution path.
-- [ ] **Property-Based Testing**: Exhaustive invariant fuzzing using QCheck for order insertion, cancellation, and execution.
+- [x] **Property-Based Testing**: Exhaustive invariant fuzzing using QCheck for order insertion, cancellation, and execution.
 
 ## v1.2 — Binary Wire Protocols
 

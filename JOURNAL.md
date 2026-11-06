@@ -4,6 +4,10 @@
 > things happen — retrospectives need this raw material to land.
 > Reverse-chronological; one paragraph max per entry.
 
+## 2026-11-06: Property-based testing with QCheck and order book DLL/iceberg invariant hardening #test #decision
+
+Added exhaustive invariant fuzzing with QCheck covering order insertion, cancellation, and execution across limit, post-only, IOC, FOK, and iceberg orders. Fuzzing exposed two critical invariants: reloaded iceberg orders inherited a `Filled` status from their exhausted passive record instead of resetting to `Active`, and advancing `best_level` to `sentinel_level` on side exhaustion caused newly linked levels to sever the DLL connection to previously resident levels. Added `root_level` to `book_side` to anchor the sorted DLL across all price levels regardless of `best_level` advancement, preserving 100% deterministic unit test coverage and zero-allocation performance guarantees.
+
 ## 2026-10-27: Scope package publishing permission #ci #security
 
 Only the image build and manifest jobs now have package write access. The test job keeps read-only repository access.
