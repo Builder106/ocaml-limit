@@ -10,7 +10,7 @@ Pure functional high-performance order book engine roadmap.
 ## v1.2 — Binary Wire Protocols
 
 - [x] **ITCH 5.0 / OUCH 5.0 Parser**: High-throughput binary protocol decoders.
-- [ ] **Benchmarking Suite**: Statistical percentile latency analysis across synthetic order flows.
+- [x] **Benchmarking Suite**: Statistical percentile latency analysis across synthetic order flows.
 
 ## Out of Scope
 
