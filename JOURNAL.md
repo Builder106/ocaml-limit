@@ -6,7 +6,7 @@
 
 ## 2026-11-06: Include QCheck in container builder and use quick_stat in bench suite #ci #fix
 
-In `Dockerfile`, the builder stage built `bin/server.exe`, `test/perf_test.exe`, and `bin/bench.exe`, but omitted `qcheck` and `qcheck-alcotest` from the `opam install` layer, causing Docker image builds for amd64 and arm64 to fail in CI with `Error: Library "qcheck" not found`. Furthermore, under OCaml 5.6 `Stdlib.Gc.stat` was deprecated in favor of `Gc.quick_stat ()`; updated `bench/bench_suite.ml` to call `Gc.quick_stat ()`.
+The `Dockerfile` builder stage compiled `bin/server.exe`, `test/perf_test.exe`, and `bin/bench.exe` but omitted `qcheck` and `qcheck-alcotest` from the `opam install` layer. Both amd64 and arm64 CI image builds failed with `Error: Library "qcheck" not found`. Added the missing packages and changed `bench/bench_suite.ml` to call `Gc.quick_stat ()` because OCaml 5.6 deprecated `Stdlib.Gc.stat`.
 
 ## 2026-11-06: Benchmarking suite with statistical percentile latency analysis across synthetic order flows #feature #decision
 
@@ -18,7 +18,7 @@ Added all 23 Nasdaq US TotalView-ITCH message layouts and both OUCH 5.0 directio
 
 ## 2026-11-06: Property-based testing with QCheck and order book DLL/iceberg invariant hardening #test #decision
 
-Added exhaustive invariant fuzzing with QCheck covering order insertion, cancellation, and execution across limit, post-only, IOC, FOK, and iceberg orders. Fuzzing exposed two critical invariants: reloaded iceberg orders inherited a `Filled` status from their exhausted passive record instead of resetting to `Active`, and advancing `best_level` to `sentinel_level` on side exhaustion caused newly linked levels to sever the DLL connection to previously resident levels. Added `root_level` to `book_side` to anchor the sorted DLL across all price levels regardless of `best_level` advancement, preserving 100% deterministic unit test coverage and zero-allocation performance guarantees.
+Added QCheck invariant fuzzing for insertion, cancellation, and execution across limit, post-only, IOC, FOK, and iceberg orders. It exposed two bugs: reloaded icebergs inherited `Filled` from their exhausted passive record instead of resetting to `Active`, and advancing `best_level` to `sentinel_level` on side exhaustion caused newly linked levels to sever the DLL connection to existing levels. Added `root_level` to `book_side` to anchor the sorted DLL across all price levels regardless of `best_level` advancement. Deterministic unit test coverage remained at 100%, as did the zero-allocation performance guarantees.
 
 ## 2026-10-27: Scope package publishing permission #ci #security
 

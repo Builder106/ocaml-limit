@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for the interest. This is a small, opinionated project — the matching engine's hot path is **zero-allocation per submit** and the test suite enforces it. Most of the guidance below is about not regressing that.
+Thanks for your interest. The matching engine's hot path is **zero-allocation per submit**, and the test suite checks that property. Much of this guide explains how to preserve it.
 
 ## Dev setup
 
@@ -51,8 +51,8 @@ CI runs both via [.github/workflows/deploy.yml](.github/workflows/deploy.yml) be
 
 Common allocation sources to watch for:
 
-- Closures capturing local state inside `Engine.submit`or`fill_loop` — see [lib/engine.ml](lib/engine.ml). Always lift recursive helpers to top-level functions and pass state explicitly. Closures cost a heap allocation on every iteration.
-- `Map.find_opt`/`max_binding_opt`/`min_binding_opt`allocate a`Some _`per call. Use`find`+`Not_found`or the custom`Price_index` from [lib/price_index.ml](lib/price_index.ml).
+- Closures capturing local state inside `Engine.submit` or `fill_loop` — see [lib/engine.ml](lib/engine.ml). Lift recursive helpers to top-level functions and pass state explicitly; capturing closures cost a heap allocation on every iteration.
+- `Map.find_opt`/`max_binding_opt`/`min_binding_opt` allocate a `Some _` per call. Use `find` + `Not_found` or the custom `Price_index` from [lib/price_index.ml](lib/price_index.ml).
 - Result records — pre-allocate them as module-level constants (`r_ok`, `r_reject_*` in [lib/engine.ml](lib/engine.ml)).
 - Iteration over `PriceMap`/`Map`rebuilds tree spine on`remove`. Use the doubly-linked level list with lazy-keep instead.
 
@@ -60,7 +60,7 @@ Read [memory/engine_allocation_profile.md](https://github.com/Builder106/ocaml-l
 
 ### Use `Gc.minor_words`, not `Gc.stat`
 
-When measuring allocation: `Gc.stat ()`itself allocates a 17-field record and triggers minor heap flushes — it contaminates the measurement.`Gc.minor_words ()` is cumulative words allocated and is the right metric. The existing bench/test code uses it; new measurements should too.
+When measuring allocation, use `Gc.minor_words ()`, which counts cumulative words allocated. `Gc.stat ()` itself allocates a 17-field record and triggers minor heap flushes, contaminating the measurement. The existing benchmark and test code uses `Gc.minor_words ()`; new measurements should too.
 
 ## Server-side code (`bin/server.ml`)
 
@@ -68,7 +68,7 @@ The Dream HTTP server is **not** on the benchmarked path. The hot path ends at `
 
 - The trade-tape / risk-alert fan-out goes through a bounded ring buffer that per-client SSE handlers drain on a 500 ms tick. **Don't add `Lwt.async (Dream.send …)`anywhere.** A long-standing wedge in this project came from queueing into gluten_lwt's write buffer for a client that subsequently closed — gluten's`write_loop_step` spins on the close path. The ring + per-client serialized drain is the workaround. See [bin/server.ml](bin/server.ml)'s "Fan-out Rings" section for the reasoning.
 
-- WebSockets are gone. The `/events`endpoint is Server-Sent Events; manual orders POST to`/order`. If you find yourself reaching for `Dream.websocket`, stop and read the history in `bin/server.ml`.
+- The `/events` endpoint uses Server-Sent Events; manual orders POST to `/order`. WebSockets were removed. Before reintroducing `Dream.websocket`, read the history in `bin/server.ml`.
 
 - `SIGUSR1` triggers a diagnostic dump (Printexc callstack + GC stats) to stderr. Useful if the live container ever wedges again:
 

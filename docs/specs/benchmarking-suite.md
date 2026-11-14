@@ -1,12 +1,12 @@
 # Benchmarking Suite: Statistical Percentile Latency Analysis
 
-The v1.2 benchmarking suite milestone provides statistical latency percentile
-analysis across synthetic order flows, covering the core limit order book
-engine, binary wire protocol decoders, and end-to-end wire-to-engine ingestion.
+The v1.2 benchmarking suite measures latency percentiles across synthetic
+order flows. It covers the core limit order book engine, binary wire protocol
+decoders, and end-to-end wire-to-engine ingestion.
 
 ## Architecture and Components
 
-The suite consists of four integrated modules:
+The suite has four modules:
 
 1. **`Ocaml_lob.Stats`** (`lib/stats.ml`):
    Low-overhead, zero-allocation latency recording using pre-allocated integer arrays
@@ -42,7 +42,8 @@ The suite exercises nine distinct market profiles:
 
 ## Statistical Latency Methodology
 
-To eliminate measurement contamination while preserving accuracy:
+The suite separates throughput and latency measurements to avoid the
+per-iteration timer's float-boxing overhead in the throughput pass:
 
 - **Dual-Pass Measurement**:
   1. *Uninstrumented Throughput & GC Pass*: Measures pure sustained engine throughput

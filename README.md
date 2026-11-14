@@ -26,7 +26,7 @@
 
 ## 💡 What is OCaml-Limit?
 
-At modern stock exchanges, millions of buy and sell orders arrive every second. OCaml-Limit is the core engine responsible for matching buyers and sellers instantly and fairly. It is built to run continuously with zero micro-pauses or lag, paired with an interactive market dashboard.
+OCaml-Limit is a limit order book and matching engine written in OCaml 5. It matches buy and sell orders by price and time priority and includes an interactive market dashboard.
 
 The matching hot path is allocation-free per submit (bench-validated), achieves ~18 million orders/sec in clean performance benchmarks, and holds p99 latency under 1 microsecond.
 
@@ -36,7 +36,7 @@ The matching hot path is allocation-free per submit (bench-validated), achieves 
 
 ## 🛠 Technical Architecture
 
-A working implementation of an exchange-grade matching engine. The engine matches trades based on price and time priority, supporting standard professional order types:
+The engine supports price-time priority and several order types and checks:
 - **Limit and Market Orders**: Standard trades at specified or market prices.
 - **Iceberg Orders**: Large orders that hide total volume to avoid moving the market.
 - **Immediate-or-Cancel (IOC) and Fill-or-Kill (FOK)**: Time-in-force conditions that prevent partial or lingering fills.
